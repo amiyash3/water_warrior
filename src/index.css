@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Water Warrior palette — deep ocean to crisp sky */
+    --background: 205 60% 98%;
+    --foreground: 215 50% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 50% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 50% 12%;
+    --primary: 210 90% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 70% 94%;
+    --secondary-foreground: 215 60% 20%;
+    --muted: 205 40% 94%;
+    --muted-foreground: 215 20% 45%;
+    --accent: 190 85% 55%;
+    --accent-foreground: 215 60% 15%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 205 30% 88%;
+    --input: 205 30% 88%;
+    --ring: 210 90% 45%;
+    --chart-1: 210 90% 45%;
+    --chart-2: 190 85% 55%;
+    --chart-3: 220 70% 40%;
+    --chart-4: 200 60% 65%;
+    --chart-5: 230 60% 50%;
+    --radius: 1rem;
+    --sidebar-background: 205 60% 98%;
+    --sidebar-foreground: 215 50% 12%;
+    --sidebar-primary: 210 90% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 70% 94%;
+    --sidebar-accent-foreground: 215 60% 20%;
+    --sidebar-border: 205 30% 88%;
+    --sidebar-ring: 210 90% 45%;
+  }
+
+  .dark {
+    --background: 215 55% 6%;
+    --foreground: 205 40% 96%;
+    --card: 215 50% 9%;
+    --card-foreground: 205 40% 96%;
+    --popover: 215 50% 9%;
+    --popover-foreground: 205 40% 96%;
+    --primary: 200 90% 55%;
+    --primary-foreground: 215 60% 10%;
+    --secondary: 215 40% 14%;
+    --secondary-foreground: 205 40% 96%;
+    --muted: 215 40% 14%;
+    --muted-foreground: 205 20% 65%;
+    --accent: 190 85% 60%;
+    --accent-foreground: 215 60% 10%;
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 215 40% 18%;
+    --input: 215 40% 18%;
+    --ring: 200 90% 55%;
+    --chart-1: 200 90% 55%;
+    --chart-2: 190 85% 60%;
+    --chart-3: 220 70% 55%;
+    --chart-4: 210 60% 70%;
+    --chart-5: 230 60% 60%;
+    --sidebar-background: 215 55% 6%;
+    --sidebar-foreground: 205 40% 96%;
+    --sidebar-primary: 200 90% 55%;
+    --sidebar-primary-foreground: 215 60% 10%;
+    --sidebar-accent: 215 40% 14%;
+    --sidebar-accent-foreground: 205 40% 96%;
+    --sidebar-border: 215 40% 18%;
+    --sidebar-ring: 200 90% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  button, a, nav, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .water-gradient {
+    background: linear-gradient(135deg, hsl(210 90% 45%) 0%, hsl(190 85% 55%) 100%);
+  }
+  .water-gradient-soft {
+    background: linear-gradient(135deg, hsl(205 80% 96%) 0%, hsl(190 70% 92%) 100%);
+  }
+  .glass {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  .animate-float {
+    animation: float-slow 4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+}

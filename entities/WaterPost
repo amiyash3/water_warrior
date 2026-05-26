@@ -1,0 +1,48 @@
+{
+  "name": "WaterPost",
+  "type": "object",
+  "properties": {
+    "front_photo_url": {
+      "type": "string",
+      "description": "Front-facing (selfie) photo URL"
+    },
+    "back_photo_url": {
+      "type": "string",
+      "description": "Back-facing (the water bottle) photo URL"
+    },
+    "caption": {
+      "type": "string",
+      "description": "Optional caption"
+    },
+    "bottle_size_ml": {
+      "type": "number",
+      "description": "Size of the bottle in milliliters",
+      "default": 500
+    },
+    "location": {
+      "type": "string",
+      "description": "Optional location text"
+    }
+  },
+  "required": [
+    "front_photo_url",
+    "back_photo_url"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "created_by": {
+            "$in": "{{user.friends}}"
+          }
+        }
+      ]
+    },
+    "write": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}

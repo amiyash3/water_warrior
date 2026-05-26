@@ -1,0 +1,92 @@
+import { useEffect } from 'react';
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClientInstance } from '@/lib/query-client';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import PageNotFound from '@/lib/PageNotFound';
+import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import Layout from '@/components/Layout';
+import Feed from '@/pages/Feed';
+import Capture from '@/pages/Capture';
+import Discover from '@/pages/Discover.jsx';
+import Account from '@/pages/Account.jsx';
+import Analytics from '@/pages/Analytics';
+
+// Page transition variants — horizontal slide
+const pageVariants = {
+  initial: { opacity: 0, x: 24 },
+  animate: { opacity: 1, x: 0 },
+  exit:    { opacity: 0, x: -24 },
+};
+const pageTransition = { duration: 0.22, ease: [0.4, 0, 0.2, 1] };
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        variants={pageVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        transition={pageTransition}
+        style={{ width: '100%' }}
+      >
+        <Routes location={location}>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Feed />} />
+            <Route path="/capture" element={<Capture />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/account" element={<Account />} />
+            <Route path="/analytics" element={<Analytics />} />
+          </Route>
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+const AuthenticatedApp = () => {
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+
+  // Apply dark class based on system preference
+  useEffect(() => {
+    // Dark mode disabled — always light
+    document.documentElement.classList.remove('dark');
+  }, []);
+
+  if (isLoadingPublicSettings || isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-100 border-t-blue-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (authError?.type === 'user_not_registered') {
+    return <UserNotRegisteredError />;
+  }
+
+  return <AnimatedRoutes />;
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <QueryClientProvider client={queryClientInstance}>
+        <Router>
+          <AuthenticatedApp />
+        </Router>
+        <Toaster />
+        <SonnerToaster position="top-center" />
+      </QueryClientProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;
