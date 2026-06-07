@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import { Droplets, Flame, Users, LogOut, Pencil, Check, X, Trash2, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -70,9 +71,15 @@ export default function Account() {
 
   const handleDeleteAccount = async () => {
     setDeletingAccount(true);
-    await api.auth.deleteAccount();
-    toast.success('Account deleted. Goodbye, Warrior!');
-    window.location.href = '/';
+    try {
+      await api.auth.deleteAccount();
+      toast.success('Account data deleted. Goodbye, Warrior!');
+      window.location.href = isSupabaseConfigured ? '/auth' : '/';
+    } catch (err) {
+      console.error(err);
+      toast.error('Could not delete account.');
+      setDeletingAccount(false);
+    }
   };
 
   return (

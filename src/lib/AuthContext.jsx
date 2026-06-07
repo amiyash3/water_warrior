@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { api } from '@/api/client';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 const AuthContext = createContext();
 
@@ -10,17 +11,51 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState({ id: 'local', public_settings: {} });
+  const [appPublicSettings, setAppPublicSettings] = useState({
+    id: isSupabaseConfigured ? 'supabase' : 'local',
+    public_settings: {},
+  });
 
   useEffect(() => {
     checkAppState();
+
+    if (!isSupabaseConfigured || !supabase) return undefined;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        checkUserAuth();
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+        setAuthChecked(true);
+        setIsLoadingAuth(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const checkAppState = async () => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
-      setAppPublicSettings({ id: 'local', public_settings: {} });
+
+      if (isSupabaseConfigured && supabase) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.user) {
+          setUser(null);
+          setIsAuthenticated(false);
+          setIsLoadingAuth(false);
+          setAuthChecked(true);
+          return;
+        }
+      }
+
       await checkUserAuth();
     } catch (error) {
       console.error('App state check failed:', error);
@@ -41,12 +76,20 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await api.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
-      setIsLoadingAuth(false);
-      setAuthChecked(true);
+      setAuthError(null);
     } catch (error) {
       console.error('User auth check failed:', error);
-      setIsLoadingAuth(false);
+      setUser(null);
       setIsAuthenticated(false);
+
+      if (error.status === 401 || error.status === 403) {
+        setAuthError({
+          type: 'auth_required',
+          message: 'Authentication required',
+        });
+      }
+    } finally {
+      setIsLoadingAuth(false);
       setAuthChecked(true);
     }
   };
@@ -54,15 +97,15 @@ export const AuthProvider = ({ children }) => {
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    if (shouldRedirect) {
-      api.auth.logout(window.location.href);
+    if (shouldRedirect && isSupabaseConfigured) {
+      api.auth.logout(window.location.origin + '/auth');
     } else {
       api.auth.logout();
     }
   };
 
   const navigateToLogin = () => {
-    api.auth.redirectToLogin(window.location.href);
+    api.auth.redirectToLogin(window.location.pathname + window.location.search);
   };
 
   return (

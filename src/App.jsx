@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "sonner";
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import PageNotFound from '@/lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from '@/components/Layout';
 import Feed from '@/pages/Feed';
@@ -14,12 +15,12 @@ import Capture from '@/pages/Capture';
 import Discover from '@/pages/Discover.jsx';
 import Account from '@/pages/Account.jsx';
 import Analytics from '@/pages/Analytics';
+import Auth from '@/pages/Auth';
 
-// Page transition variants — horizontal slide
 const pageVariants = {
   initial: { opacity: 0, x: 24 },
   animate: { opacity: 1, x: 0 },
-  exit:    { opacity: 0, x: -24 },
+  exit: { opacity: 0, x: -24 },
 };
 const pageTransition = { duration: 0.22, ease: [0.4, 0, 0.2, 1] };
 
@@ -52,11 +53,10 @@ function AnimatedRoutes() {
 }
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+  const location = useLocation();
 
-  // Apply dark class based on system preference
   useEffect(() => {
-    // Dark mode disabled — always light
     document.documentElement.classList.remove('dark');
   }, []);
 
@@ -72,6 +72,11 @@ const AuthenticatedApp = () => {
     return <UserNotRegisteredError />;
   }
 
+  if (isSupabaseConfigured && !isAuthenticated) {
+    const next = location.pathname + location.search;
+    return <Navigate to={`/auth?next=${encodeURIComponent(next)}`} replace />;
+  }
+
   return <AnimatedRoutes />;
 };
 
@@ -80,7 +85,10 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
         <SonnerToaster position="top-center" />
