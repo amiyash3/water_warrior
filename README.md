@@ -104,12 +104,66 @@ Photos upload to Supabase Storage bucket **`post-photos`** at `{userId}/{uuid}.j
 
 ---
 
-## Xcode / native iOS (later)
+## Xcode / native iOS
 
-Use the **same Supabase project**:
+This app uses **[Capacitor](https://capacitorjs.com/)** to wrap the same React build in a native iOS shell. You edit UI in this repo; Xcode runs it on a simulator or device.
 
-- **Capacitor** — wrap this React app; keep `@supabase/supabase-js` or use native camera plugins.
-- **SwiftUI** — [supabase-swift](https://github.com/supabase/supabase-swift) against the same tables, RLS, and storage bucket.
+### Prerequisites
+
+- macOS with **Xcode** installed (from the App Store)
+- Xcode command-line tools: `xcode-select --install`
+- Apple ID (free tier is fine for simulator + your own device)
+- `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (values are baked in at **build** time)
+
+### First-time setup
+
+```bash
+npm install
+npm run cap:ios
+```
+
+That builds the web app, copies it into `ios/`, and opens **Water Warrior.xcodeproj** in Xcode.
+
+In Xcode:
+
+1. Select the **App** target → **Signing & Capabilities** → choose your **Team**
+2. Pick a simulator (e.g. iPhone 16) or plug in your iPhone
+3. Press **Run** (▶)
+
+### Day-to-day workflow
+
+After changing React code:
+
+```bash
+npm run cap:sync    # rebuild web app + copy to ios/
+```
+
+Then run again from Xcode (▶). You do **not** need to re-run `cap add ios`.
+
+Open Xcode anytime:
+
+```bash
+npx cap open ios
+```
+
+### Supabase for the native app
+
+In **Authentication → URL configuration**, add these **Redirect URLs**:
+
+- `com.waterwarrior.app://**`
+- `com.waterwarrior.app://auth/callback`
+
+Email/password sign-in works immediately. Password-reset emails use the custom URL scheme above (`src/lib/native.js`).
+
+Use the **same Supabase project** as the web app — same tables, RLS, and `post-photos` bucket.
+
+### Camera on iOS
+
+`Info.plist` already includes camera permission text. The Capture page uses the WebView camera APIs; for true simultaneous front+rear photos later, add `@capacitor/camera` or a native plugin.
+
+### Live reload from your Mac (optional)
+
+In `capacitor.config.ts`, uncomment `server.url` and set it to your LAN HTTPS dev URL from `npm run dev:mobile`, then `npx cap sync ios`.
 
 Enable **Sign in with Apple** in Supabase when you ship to the App Store.
 
@@ -122,4 +176,6 @@ Enable **Sign in with Apple** in Supabase when you ship to the App Store.
 | `npm run dev` | Dev server |
 | `npm run dev:mobile` | Dev server on LAN + HTTPS (phone testing) |
 | `npm run build` | Production build |
+| `npm run cap:sync` | Build + copy web assets into `ios/` |
+| `npm run cap:ios` | Build, sync, and open Xcode |
 | `npm run preview` | Preview production build |

@@ -5,6 +5,7 @@ import { Droplets, Loader2, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { getAuthRedirectUrl } from '@/lib/native';
 
 /** signin | signup | forgot | reset */
 function resolveInitialMode(searchParams) {
@@ -98,7 +99,7 @@ export default function Auth() {
 
     setLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/auth?mode=reset`;
+      const redirectTo = getAuthRedirectUrl('/auth?mode=reset');
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
       toast.success('Check your email for a password reset link.');

@@ -8,6 +8,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const useHttps = process.env.VITE_HTTPS !== 'false';
 
 export default defineConfig({
+  // Relative paths so Capacitor's WebView can load bundled assets.
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

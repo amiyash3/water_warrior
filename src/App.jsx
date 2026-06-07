@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import PageNotFound from '@/lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { setupNativeAuthDeepLinks } from '@/lib/native';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from '@/components/Layout';
 import Feed from '@/pages/Feed';
@@ -81,6 +82,8 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  useEffect(() => setupNativeAuthDeepLinks(), []);
+
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
