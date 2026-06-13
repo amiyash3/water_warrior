@@ -1,18 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Droplets, TrendingUp } from 'lucide-react';
+import { Droplets, TrendingUp, Trophy, Sparkles } from 'lucide-react';
 import { format, startOfWeek, eachDayOfInterval, subMonths, eachMonthOfInterval } from 'date-fns';
+import {
+  getAccountDayCount,
+  getTotalMl,
+  getAverageLitersPerDay,
+  buildBottleStats,
+} from '@/lib/hydrationStats';
+import {
+  getHydrationMilestones,
+  formatMilestoneProgress,
+} from '@/lib/hydrationMilestones';
+import { cn } from '@/lib/utils';
 
 function buildWeeklyData(posts) {
   const today = new Date();
   const start = startOfWeek(today, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start, end: today });
-  return days.map(day => {
+  return days.map((day) => {
     const label = format(day, 'EEE');
     const dateStr = format(day, 'yyyy-MM-dd');
     const liters = posts
-      .filter(p => p.created_date?.slice(0, 10) === dateStr)
+      .filter((p) => p.created_date?.slice(0, 10) === dateStr)
       .reduce((sum, p) => sum + (p.bottle_size_ml || 500) / 1000, 0);
     return { label, liters: parseFloat(liters.toFixed(2)) };
   });
@@ -21,11 +32,11 @@ function buildWeeklyData(posts) {
 function buildMonthlyData(posts) {
   const today = new Date();
   const months = eachMonthOfInterval({ start: subMonths(today, 5), end: today });
-  return months.map(month => {
+  return months.map((month) => {
     const label = format(month, 'MMM');
     const monthStr = format(month, 'yyyy-MM');
     const liters = posts
-      .filter(p => p.created_date?.slice(0, 7) === monthStr)
+      .filter((p) => p.created_date?.slice(0, 7) === monthStr)
       .reduce((sum, p) => sum + (p.bottle_size_ml || 500) / 1000, 0);
     return { label, liters: parseFloat(liters.toFixed(2)) };
   });
@@ -69,14 +80,21 @@ function ChartCard({ title, data, color }) {
 
 export default function Analytics() {
   const [posts, setPosts] = useState([]);
+  const [bottles, setBottles] = useState([]);
+  const [accountCreated, setAccountCreated] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const me = await api.auth.me();
-        const myPosts = await api.entities.WaterPost.filter({ created_by: me.email }, '-created_date', 500);
+        const [myPosts, myBottles] = await Promise.all([
+          api.entities.WaterPost.filter({ created_by: me.email }, '-created_date', 500),
+          api.entities.UserBottle.list(),
+        ]);
         setPosts(myPosts);
+        setBottles(myBottles);
+        setAccountCreated(me.created_date);
       } catch (e) {
         console.error('Analytics load error', e);
       } finally {
@@ -87,15 +105,19 @@ export default function Analytics() {
 
   const weeklyData = buildWeeklyData(posts);
   const monthlyData = buildMonthlyData(posts);
-  const totalLiters = posts.reduce((s, p) => s + (p.bottle_size_ml || 500) / 1000, 0).toFixed(1);
-  const avgPerDay = posts.length
-    ? (posts.reduce((s, p) => s + (p.bottle_size_ml || 500), 0) / 1000 / Math.max(1, new Set(posts.map(p => p.created_date?.slice(0, 10))).size)).toFixed(1)
-    : '0.0';
+  const totalMl = getTotalMl(posts);
+  const totalLiters = (totalMl / 1000).toFixed(1);
+  const accountDays = getAccountDayCount(accountCreated);
+  const avgPerDay = getAverageLitersPerDay(posts, accountDays).toFixed(2);
+  const { featured, next, unlocked } = getHydrationMilestones(totalMl);
+  const bottleStats = buildBottleStats(posts, bottles);
 
   if (loading) {
     return (
       <div className="p-5 space-y-4">
-        {[1, 2].map(i => <div key={i} className="bg-card rounded-3xl border border-border/50 h-52 animate-pulse" />)}
+        {[1, 2].map((i) => (
+          <div key={i} className="bg-card rounded-3xl border border-border/50 h-52 animate-pulse" />
+        ))}
       </div>
     );
   }
@@ -107,7 +129,6 @@ export default function Analytics() {
         <p className="text-sm text-muted-foreground mt-1">Your hydration at a glance</p>
       </div>
 
-      {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card rounded-3xl border border-border/50 p-4 shadow-sm">
           <TrendingUp className="w-5 h-5 text-primary mb-2" />
@@ -118,8 +139,98 @@ export default function Analytics() {
           <Droplets className="w-5 h-5 text-primary mb-2" />
           <p className="text-2xl font-bold tracking-tight">{avgPerDay} L</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mt-1">Avg / day</p>
+          <p className="text-[10px] text-muted-foreground mt-1">Over {accountDays} day{accountDays !== 1 ? 's' : ''} on Water Warrior</p>
         </div>
       </div>
+
+      <div className="bg-card rounded-3xl border border-border/50 p-5 shadow-sm overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="flex items-start gap-3 relative">
+          <div className="w-12 h-12 rounded-2xl water-gradient-soft flex items-center justify-center text-2xl shrink-0">
+            {featured?.emoji ?? '💧'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h3 className="font-semibold text-base">Hydration milestone</h3>
+            </div>
+            {featured ? (
+              <>
+                <p className="text-sm font-semibold text-primary">{featured.title}</p>
+                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{featured.message}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Capture your first drink to unlock fun comparisons.</p>
+            )}
+            {next && (
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                  <span>Next: {next.title}</span>
+                  <span>{formatMilestoneProgress(totalMl, next)}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full water-gradient rounded-full transition-all"
+                    style={{ width: `${formatMilestoneProgress(totalMl, next)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {unlocked.length > 1 && (
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5" /> Unlocked ({unlocked.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {unlocked.map((m) => (
+                <span
+                  key={m.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                >
+                  {m.emoji} {m.title}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {bottleStats.length > 0 && (
+        <div className="bg-card rounded-3xl border border-border/50 p-5 shadow-sm">
+          <h3 className="font-semibold text-base mb-1">Your bottles</h3>
+          <p className="text-xs text-muted-foreground mb-4">Totals per bottle from your capture history</p>
+          <div className="space-y-3">
+            {bottleStats.map((bottle) => (
+              <div
+                key={bottle.id}
+                className={cn(
+                  'rounded-2xl border border-border/50 p-4',
+                  bottle.id !== 'unassigned' && 'bg-background/50'
+                )}
+              >
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">{bottle.name}</p>
+                    {bottle.size_ml && (
+                      <p className="text-xs text-muted-foreground">{bottle.size_ml} ml bottle</p>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold text-primary shrink-0">
+                    {bottle.totalLiters.toFixed(1)} L
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>{bottle.postCount} fill{bottle.postCount !== 1 ? 's' : ''}</span>
+                  <span>{bottle.totalMl.toLocaleString()} ml total</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <ChartCard title="This Week" data={weeklyData} color="hsl(var(--primary))" />
       <ChartCard title="Last 6 Months" data={monthlyData} color="hsl(var(--accent))" />

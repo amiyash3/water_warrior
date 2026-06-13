@@ -6,6 +6,7 @@ const STORAGE = {
   currentUserId: 'ww_current_user_id',
   users: 'ww_users',
   posts: 'ww_water_posts',
+  bottles: 'ww_user_bottles',
   friendRequests: 'ww_friend_requests',
 };
 
@@ -219,6 +220,8 @@ const auth = {
     saveUsers(users);
     const posts = readJson(STORAGE.posts, []).filter((p) => p.created_by !== me.email);
     writeJson(STORAGE.posts, posts);
+    const bottles = readJson(STORAGE.bottles, []).filter((b) => b.user_id !== me.id);
+    writeJson(STORAGE.bottles, bottles);
     const requests = readJson(STORAGE.friendRequests, []).filter(
       (r) => r.from_email !== me.email && r.to_email !== me.email
     );
@@ -252,6 +255,53 @@ export const localApi = {
   addFriendConnection,
   entities: {
     WaterPost: createEntityApi(STORAGE.posts, { withCreatedBy: true }),
+    UserBottle: {
+      async list() {
+        const me = await auth.me();
+        return readJson(STORAGE.bottles, []).filter((b) => b.user_id === me.id);
+      },
+      async create(data) {
+        const me = await auth.me();
+        const bottles = readJson(STORAGE.bottles, []);
+        if (data.is_default) {
+          bottles.forEach((b) => {
+            if (b.user_id === me.id) b.is_default = false;
+          });
+        }
+        const bottle = {
+          id: generateId(),
+          user_id: me.id,
+          name: data.name,
+          size_ml: data.size_ml,
+          is_default: data.is_default ?? false,
+          created_date: new Date().toISOString(),
+        };
+        bottles.push(bottle);
+        writeJson(STORAGE.bottles, bottles);
+        return bottle;
+      },
+      async update(id, data) {
+        const me = await auth.me();
+        const bottles = readJson(STORAGE.bottles, []);
+        const index = bottles.findIndex((b) => b.id === id && b.user_id === me.id);
+        if (index === -1) throw new Error('Bottle not found');
+        if (data.is_default) {
+          bottles.forEach((b) => {
+            if (b.user_id === me.id) b.is_default = false;
+          });
+        }
+        bottles[index] = { ...bottles[index], ...data };
+        writeJson(STORAGE.bottles, bottles);
+        return bottles[index];
+      },
+      async delete(id) {
+        const me = await auth.me();
+        const bottles = readJson(STORAGE.bottles, []).filter(
+          (b) => !(b.id === id && b.user_id === me.id)
+        );
+        writeJson(STORAGE.bottles, bottles);
+      },
+    },
     User: {
       async list() {
         return getUsers();

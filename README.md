@@ -27,6 +27,10 @@ Without `VITE_SUPABASE_*` env vars, the app uses localStorage (guest user + demo
 
 This creates `profiles`, `water_posts`, `friend_requests`, `friendships`, RLS policies, storage bucket `post-photos`, and triggers.
 
+Also run (for saved bottles + per-bottle stats):
+
+   `supabase/migrations/20260606120000_user_bottles.sql`
+
 If the storage bucket insert fails, create it manually: **Storage → New bucket** → name `post-photos` → **Public bucket** ON.
 
 ### 3. Configure Auth

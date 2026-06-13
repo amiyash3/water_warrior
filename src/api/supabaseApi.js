@@ -85,6 +85,17 @@ export function createSupabaseApi(supabase) {
       caption: row.caption ?? '',
       location: row.location ?? '',
       bottle_size_ml: row.bottle_size_ml ?? 500,
+      bottle_id: row.bottle_id ?? null,
+    };
+  }
+
+  function mapBottleRow(row) {
+    return {
+      id: row.id,
+      name: row.name,
+      size_ml: row.size_ml,
+      is_default: row.is_default ?? false,
+      created_date: row.created_at,
     };
   }
 
@@ -208,6 +219,7 @@ export function createSupabaseApi(supabase) {
           caption: data.caption ?? '',
           location: data.location ?? '',
           bottle_size_ml: data.bottle_size_ml ?? 500,
+          bottle_id: data.bottle_id ?? null,
         };
 
         const { data: inserted, error } = await supabase
@@ -223,6 +235,83 @@ export function createSupabaseApi(supabase) {
       async delete(id) {
         await requireSession();
         const { error } = await supabase.from('water_posts').delete().eq('id', id);
+        if (error) throw error;
+      },
+    },
+
+    UserBottle: {
+      async list() {
+        const session = await requireSession();
+        const { data, error } = await supabase
+          .from('user_bottles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return (data ?? []).map(mapBottleRow);
+      },
+
+      async create(data) {
+        const session = await requireSession();
+        await ensureProfile(session.user);
+
+        if (data.is_default) {
+          await supabase
+            .from('user_bottles')
+            .update({ is_default: false })
+            .eq('user_id', session.user.id);
+        }
+
+        const { data: inserted, error } = await supabase
+          .from('user_bottles')
+          .insert({
+            user_id: session.user.id,
+            name: data.name,
+            size_ml: data.size_ml,
+            is_default: data.is_default ?? false,
+          })
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        return mapBottleRow(inserted);
+      },
+
+      async update(id, data) {
+        const session = await requireSession();
+
+        if (data.is_default) {
+          await supabase
+            .from('user_bottles')
+            .update({ is_default: false })
+            .eq('user_id', session.user.id);
+        }
+
+        const patch = {};
+        if ('name' in data) patch.name = data.name;
+        if ('size_ml' in data) patch.size_ml = data.size_ml;
+        if ('is_default' in data) patch.is_default = data.is_default;
+
+        const { data: updated, error } = await supabase
+          .from('user_bottles')
+          .update(patch)
+          .eq('id', id)
+          .eq('user_id', session.user.id)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+        return mapBottleRow(updated);
+      },
+
+      async delete(id) {
+        const session = await requireSession();
+        const { error } = await supabase
+          .from('user_bottles')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', session.user.id);
         if (error) throw error;
       },
     },

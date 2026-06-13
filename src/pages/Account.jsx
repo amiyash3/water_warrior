@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import UserAvatar from '@/components/UserAvatar';
 import HydrationCalendar from '@/components/HydrationCalendar';
+import MyBottlesManager from '@/components/MyBottlesManager';
 import { toast } from 'sonner';
 
 const GOAL_OPTIONS = [1000, 1500, 2000, 2500, 3000, 3500, 4000];
@@ -157,6 +158,10 @@ export default function Account() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="px-5 mt-6">
+        <MyBottlesManager />
       </div>
 
       <div className="px-5 mt-6">

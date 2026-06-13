@@ -7,6 +7,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const useHttps = process.env.VITE_HTTPS !== 'false';
 
+/** Capacitor iOS WebView fails to load module scripts with crossorigin. */
+function capacitorBuildPlugin() {
+  return {
+    name: 'capacitor-build',
+    transformIndexHtml(html) {
+      return html.replace(/\s+crossorigin/g, '');
+    },
+  };
+}
+
 export default defineConfig({
   // Relative paths so Capacitor's WebView can load bundled assets.
   base: './',
@@ -15,7 +25,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  plugins: [react(), ...(useHttps ? [basicSsl()] : [])],
+  build: {
+    modulePreload: false,
+  },
+  plugins: [
+    react(),
+    capacitorBuildPlugin(),
+    ...(useHttps ? [basicSsl()] : []),
+  ],
   server: {
     host: true,
   },

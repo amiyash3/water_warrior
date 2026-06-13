@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { BottlePicker, OTHER_BOTTLE_ID } from '@/components/MyBottlesManager';
 
 const BOTTLE_SIZES = [250, 500, 750, 1000];
 const MEDIA_TIMEOUT_MS = 15000;
@@ -149,6 +150,8 @@ export default function Capture() {
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
   const [bottleSize, setBottleSize] = useState(500);
+  const [bottles, setBottles] = useState([]);
+  const [selectedBottleId, setSelectedBottleId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [capturing, setCapturing] = useState(false);
 
@@ -245,11 +248,28 @@ export default function Capture() {
     } else {
       startLiveCameras();
     }
+    api.entities.UserBottle.list()
+      .then((list) => {
+        setBottles(list);
+        const defaultBottle = list.find((b) => b.is_default) ?? list[0];
+        if (defaultBottle) {
+          setSelectedBottleId(defaultBottle.id);
+          setBottleSize(defaultBottle.size_ml);
+        }
+      })
+      .catch(() => {});
     return () => {
       mountedRef.current = false;
       stopStreams();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleBottleSelect = (bottleId) => {
+    setSelectedBottleId(bottleId);
+    if (bottleId === OTHER_BOTTLE_ID) return;
+    const bottle = bottles.find((b) => b.id === bottleId);
+    if (bottle) setBottleSize(bottle.size_ml);
+  };
 
   const handleNativeFile = (kind, file) => {
     if (!file) return;
@@ -373,6 +393,7 @@ export default function Capture() {
         caption,
         location,
         bottle_size_ml: bottleSize,
+        bottle_id: selectedBottleId && selectedBottleId !== OTHER_BOTTLE_ID ? selectedBottleId : null,
       });
 
       const me = await api.auth.me();
@@ -606,27 +627,43 @@ export default function Capture() {
         <>
           <div className="space-y-5 bg-card rounded-3xl border border-border/50 p-5">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
-                <Droplets className="w-3.5 h-3.5" />
-                Bottle size
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {BOTTLE_SIZES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setBottleSize(s)}
-                    className={cn(
-                      'py-3 rounded-2xl text-sm font-semibold transition-all border',
-                      bottleSize === s
-                        ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
-                        : 'bg-background border-border hover:border-primary/40'
-                    )}
-                  >
-                    {s}ml
-                  </button>
-                ))}
-              </div>
+              {bottles.length > 0 ? (
+                <BottlePicker
+                  bottles={bottles}
+                  selectedId={selectedBottleId}
+                  onSelect={handleBottleSelect}
+                  sizeOptions={BOTTLE_SIZES}
+                  bottleSize={bottleSize}
+                  onSizeChange={setBottleSize}
+                />
+              ) : (
+                <>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
+                    <Droplets className="w-3.5 h-3.5" />
+                    Bottle size
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {BOTTLE_SIZES.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setBottleSize(s)}
+                        className={cn(
+                          'py-3 rounded-2xl text-sm font-semibold transition-all border',
+                          bottleSize === s
+                            ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+                            : 'bg-background border-border hover:border-primary/40'
+                        )}
+                      >
+                        {s}ml
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Save bottles in Account to track them in stats.
+                  </p>
+                </>
+              )}
             </div>
 
             <div>

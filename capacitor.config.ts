@@ -9,6 +9,13 @@ const config: CapacitorConfig = {
     // url: 'https://YOUR_LAN_IP:5173',
     // cleartext: true,
   },
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: 500,
+      showSpinner: false,
+    },
+  },
   ios: {
     contentInset: 'automatic',
   },
