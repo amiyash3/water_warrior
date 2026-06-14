@@ -126,4 +126,6 @@
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
-}
+* {
+  cursor: url('/cursors/water-bottle.svg') 16 0, auto;
+}}

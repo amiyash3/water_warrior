@@ -125,24 +125,43 @@ export default function MyBottlesManager({ compact = false }) {
             placeholder="e.g. Gym Nalgene, Desk bottle"
             className="rounded-2xl"
           />
-          <div className="grid grid-cols-3 gap-2">
-            {SIZE_OPTIONS.map((ml) => (
-              <button
-                key={ml}
-                type="button"
-                onClick={() => setSizeMl(ml)}
-                className={cn(
-                  'py-2 rounded-xl text-xs font-semibold border transition-all',
-                  sizeMl === ml
-                    ? 'water-gradient text-white border-transparent'
-                    : 'bg-background border-border hover:border-primary/40'
-                )}
-              >
-                {ml >= 1000 ? `${ml / 1000}L` : `${ml}ml`}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2">
+<p className="text-xs text-muted-foreground mb-1">ml</p>
+<div className="grid grid-cols-3 gap-2 mb-3">
+  {[250, 500, 750, 1000, 1500, 2000].map((ml) => (
+    <button
+      key={ml}
+      type="button"
+      onClick={() => setSizeMl(ml)}
+      className={cn(
+        'py-2 rounded-xl text-xs font-semibold border transition-all',
+        sizeMl === ml
+          ? 'water-gradient text-white border-transparent'
+          : 'bg-background border-border hover:border-primary/40'
+      )}
+    >
+      {ml >= 1000 ? `${ml / 1000}L` : `${ml}ml`}
+    </button>
+  ))}
+</div>
+<p className="text-xs text-muted-foreground mb-1">oz</p>
+<div className="grid grid-cols-3 gap-2">
+  {[8, 12, 16, 24, 32, 64].map((s) => (
+    <button
+      key={s}
+      type="button"
+      onClick={() => setSizeMl(s)}
+      className={cn(
+        'py-2 rounded-xl text-xs font-semibold border transition-all',
+        sizeMl === s
+          ? 'water-gradient text-white border-transparent'
+          : 'bg-background border-border hover:border-primary/40'
+      )}
+    >
+      {s}oz
+    </button>
+  ))}
+</div>          
+<div className="flex gap-2">
             <Button
               className="flex-1 rounded-2xl water-gradient border-0"
               disabled={saving}
@@ -279,24 +298,43 @@ export function BottlePicker({
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
             How much water?
           </label>
-          <div className="grid grid-cols-4 gap-2">
-            {sizeOptions.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onSizeChange(s)}
-                className={cn(
-                  'py-3 rounded-2xl text-sm font-semibold transition-all border',
-                  bottleSize === s
-                    ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
-                    : 'bg-background border-border hover:border-primary/40'
-                )}
-              >
-                {s}ml
-              </button>
-            ))}
-          </div>
-        </div>
+<p className="text-xs text-muted-foreground mb-1">ml</p>
+<div className="grid grid-cols-4 gap-2 mb-3">
+  {[250, 500, 750, 1000].map((s) => (
+    <button
+      key={s}
+      type="button"
+      onClick={() => onSizeChange(s)}
+      className={cn(
+        'py-3 rounded-2xl text-sm font-semibold transition-all border',
+        bottleSize === s
+          ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+          : 'bg-background border-border hover:border-primary/40'
+      )}
+    >
+      {s}ml
+    </button>
+  ))}
+</div>
+<p className="text-xs text-muted-foreground mb-1">oz</p>
+<div className="grid grid-cols-6 gap-2">
+  {[8, 12, 16, 24, 32, 64].map((s) => (
+    <button
+      key={s}
+      type="button"
+      onClick={() => onSizeChange(s)}
+      className={cn(
+        'py-3 rounded-2xl text-sm font-semibold transition-all border',
+        bottleSize === s
+          ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+          : 'bg-background border-border hover:border-primary/40'
+      )}
+    >
+      {s}oz
+    </button>
+  ))}
+</div>        
+</div>
       )}
     </div>
   );
