@@ -22,7 +22,10 @@ export default function PostCard({ post, author }) {
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
           <Droplets className="w-3.5 h-3.5" />
-          {post.bottle_size_ml || 500}ml
+{post.bottle_size_ml >= 1000
+  ? `${(post.bottle_size_ml / 1000).toFixed(1)}L`
+  : `${post.bottle_size_ml || 500}ml`
+} · {Math.round((post.bottle_size_ml || 500) / 29.574)}oz
         </div>
       </header>
 

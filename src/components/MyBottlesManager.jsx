@@ -149,10 +149,10 @@ export default function MyBottlesManager({ compact = false }) {
     <button
       key={s}
       type="button"
-      onClick={() => setSizeMl(s)}
+onClick={() => setSizeMl(Math.round(s * 29.574))}
       className={cn(
         'py-2 rounded-xl text-xs font-semibold border transition-all',
-        sizeMl === s
+Math.abs(sizeMl - Math.round(s * 29.574)) < 10
           ? 'water-gradient text-white border-transparent'
           : 'bg-background border-border hover:border-primary/40'
       )}
@@ -192,8 +192,8 @@ export default function MyBottlesManager({ compact = false }) {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-sm truncate">{bottle.name}</p>
-                <p className="text-xs text-muted-foreground">{bottle.size_ml} ml</p>
-              </div>
+<p className="text-xs text-muted-foreground">{bottle.size_ml}ml · {Math.round(bottle.size_ml / 29.574)}oz</p>              
+</div>
               {bottle.is_default ? (
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-primary px-2 py-1 rounded-full bg-primary/10">
                   Default
@@ -266,7 +266,7 @@ export function BottlePicker({
                 selectedId === bottle.id ? 'text-white/90' : 'text-muted-foreground'
               )}
             >
-              {bottle.size_ml} ml
+{bottle.size_ml}ml · {Math.round(bottle.size_ml / 29.574)}oz
             </span>
           </button>
         ))}
@@ -322,10 +322,10 @@ export function BottlePicker({
     <button
       key={s}
       type="button"
-      onClick={() => onSizeChange(s)}
+onClick={() => onSizeChange(Math.round(s * 29.574))}
       className={cn(
         'py-3 rounded-2xl text-sm font-semibold transition-all border',
-        bottleSize === s
+Math.abs(bottleSize - Math.round(s * 29.574)) < 10
           ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
           : 'bg-background border-border hover:border-primary/40'
       )}

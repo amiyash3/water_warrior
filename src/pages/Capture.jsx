@@ -666,10 +666,10 @@ export default function Capture() {
     <button
       key={s}
       type="button"
-      onClick={() => setBottleSize(s)}
+onClick={() => setBottleSize(Math.round(s * 29.574))}
       className={cn(
         'py-3 rounded-2xl text-sm font-semibold transition-all border',
-        bottleSize === s
+Math.abs(bottleSize - Math.round(s * 29.574)) < 10
           ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
           : 'bg-background border-border hover:border-primary/40'
       )}

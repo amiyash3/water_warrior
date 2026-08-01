@@ -198,24 +198,44 @@ export default function Account() {
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-primary" />
             <h3 className="font-semibold text-base">Daily Goal</h3>
-            <span className="ml-auto text-sm font-bold text-primary">{(me.daily_goal_ml || 2000) / 1000} L</span>
+<span className="ml-auto text-sm font-bold text-primary">
+  {(me.daily_goal_ml || 2000) / 1000} L · {Math.round((me.daily_goal_ml || 2000) / 29.574)} oz
+</span>
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            {GOAL_OPTIONS.map(ml => (
-              <button
-                key={ml}
-                disabled={savingGoal}
-                onClick={() => saveGoal(ml)}
-                className={`py-2.5 rounded-2xl text-xs font-semibold transition-all border ${
-                  (me.daily_goal_ml || 2000) === ml
-                    ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
-                    : 'bg-background border-border hover:border-primary/40'
-                }`}
-              >
-                {ml >= 1000 ? `${ml / 1000}L` : `${ml}ml`}
-              </button>
-            ))}
-          </div>
+<p className="text-xs text-muted-foreground mb-1">ml</p>
+<div className="grid grid-cols-4 gap-2 mb-3">
+  {[1000, 1500, 2000, 2500, 3000, 3500, 4000].map(ml => (
+    <button
+      key={ml}
+      disabled={savingGoal}
+      onClick={() => saveGoal(ml)}
+      className={`py-2.5 rounded-2xl text-xs font-semibold transition-all border ${
+        (me.daily_goal_ml || 2000) === ml
+          ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+          : 'bg-background border-border hover:border-primary/40'
+      }`}
+    >
+      {ml >= 1000 ? `${ml / 1000}L` : `${ml}ml`}
+    </button>
+  ))}
+</div>
+<p className="text-xs text-muted-foreground mb-1">oz</p>
+<div className="grid grid-cols-4 gap-2">
+  {[32, 48, 64, 80, 96, 112, 128].map(oz => (
+    <button
+      key={oz}
+      disabled={savingGoal}
+      onClick={() => saveGoal(Math.round(oz * 29.574))}
+      className={`py-2.5 rounded-2xl text-xs font-semibold transition-all border ${
+        Math.abs((me.daily_goal_ml || 2000) - Math.round(oz * 29.574)) < 10
+          ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+          : 'bg-background border-border hover:border-primary/40'
+      }`}
+    >
+      {oz}oz
+    </button>
+  ))}
+</div>
           <p className="text-xs text-muted-foreground mt-3">Your streak increases each day you hit this goal.</p>
         </div>
       </div>
