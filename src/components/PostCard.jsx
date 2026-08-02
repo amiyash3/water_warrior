@@ -3,13 +3,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { Droplets, MapPin } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import DualPhotoView from './DualPhotoView';
+import CommentSection from './CommentSection';
 
 export default function PostCard({ post, author }) {
   const user = author || { email: post.created_by, username: post.created_by?.split('@')[0] };
   const timeAgo = post.created_date
     ? formatDistanceToNow(new Date(post.created_date), { addSuffix: true })
     : '';
-
   return (
     <article className="bg-card rounded-3xl overflow-hidden border border-border/50 shadow-sm hover:shadow-lg hover:shadow-primary/5 transition-all">
       <header className="flex items-center gap-3 p-4">
@@ -28,11 +28,9 @@ export default function PostCard({ post, author }) {
 } · {Math.round((post.bottle_size_ml || 500) / 29.574)}oz
         </div>
       </header>
-
       <div className="px-4">
         <DualPhotoView frontUrl={post.front_photo_url} backUrl={post.back_photo_url} />
       </div>
-
       {(post.caption || post.location) && (
         <div className="p-4 space-y-2">
           {post.caption && (
@@ -46,6 +44,7 @@ export default function PostCard({ post, author }) {
           )}
         </div>
       )}
+      <CommentSection postId={post.id} />
     </article>
   );
 }
