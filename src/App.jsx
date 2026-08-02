@@ -18,6 +18,7 @@ import Account from '@/pages/Account.jsx';
 import Analytics from '@/pages/Analytics';
 import Auth from '@/pages/Auth';
 import LoadingScreen from '@/components/LoadingScreen';
+import { useHydrationReminders } from '@/hooks/useHydrationReminders';
 
 const pageVariants = {
   initial: { opacity: 0, x: 24 },
@@ -57,6 +58,11 @@ function AnimatedRoutes() {
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
   const location = useLocation();
+
+    const readyAndAuthenticated =
+    !isLoadingAuth && !isLoadingPublicSettings && (!isSupabaseConfigured || isAuthenticated);
+
+  useHydrationReminders(readyAndAuthenticated);
 
   useEffect(() => {
     document.documentElement.classList.remove('dark');
