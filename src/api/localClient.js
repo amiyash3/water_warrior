@@ -18,6 +18,7 @@ const DEMO_USERS = [
     full_name: 'Alex Rivera',
     bio: 'Morning hydration enthusiast',
     friends: [],
+    avatar_url: null,
     daily_goal_ml: 2500,
     streak_count: 5,
   },
@@ -28,6 +29,7 @@ const DEMO_USERS = [
     full_name: 'Sam Chen',
     bio: 'Gym bottle always full',
     friends: [],
+    avatar_url: null,
     daily_goal_ml: 2000,
     streak_count: 12,
   },
@@ -38,6 +40,7 @@ const DEMO_USERS = [
     full_name: 'Jordan Lee',
     bio: 'Tracking every ml',
     friends: [],
+    avatar_url: null,
     daily_goal_ml: 3000,
     streak_count: 3,
   },
@@ -107,6 +110,7 @@ function createGuestUser() {
     full_name: 'Water Warrior',
     bio: '',
     friends: [],
+    avatar_url: null,
     daily_goal_ml: 2000,
     streak_count: 0,
     last_goal_date: null,
@@ -314,6 +318,9 @@ export const localApi = {
       async UploadFile({ file }) {
         const file_url = await blobToDataUrl(file);
         return { file_url };
+      },
+      async UploadAvatar({ file }) {
+        return this.UploadFile({ file });
       },
     },
   },

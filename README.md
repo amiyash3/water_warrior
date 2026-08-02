@@ -31,6 +31,10 @@ Also run (for saved bottles + per-bottle stats):
 
    `supabase/migrations/20260606120000_user_bottles.sql`
 
+And for profile photos:
+
+   `supabase/migrations/20260802120000_profile_avatars.sql`
+
 If the storage bucket insert fails, create it manually: **Storage → New bucket** → name `post-photos` → **Public bucket** ON.
 
 ### 3. Configure Auth

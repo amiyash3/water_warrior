@@ -67,6 +67,7 @@ export function createSupabaseApi(supabase) {
       username: row.username ?? '',
       full_name: row.full_name ?? '',
       bio: row.bio ?? '',
+      avatar_url: row.avatar_url ?? null,
       friends,
       daily_goal_ml: row.daily_goal_ml ?? 2000,
       streak_count: row.streak_count ?? 0,
@@ -126,6 +127,7 @@ export function createSupabaseApi(supabase) {
       const patch = {};
       if ('username' in updates) patch.username = updates.username;
       if ('bio' in updates) patch.bio = updates.bio;
+      if ('avatar_url' in updates) patch.avatar_url = updates.avatar_url;
       if ('daily_goal_ml' in updates) patch.daily_goal_ml = updates.daily_goal_ml;
       if ('streak_count' in updates) patch.streak_count = updates.streak_count;
       if ('last_goal_date' in updates) patch.last_goal_date = updates.last_goal_date;
@@ -436,14 +438,15 @@ export function createSupabaseApi(supabase) {
 
   const integrations = {
     Core: {
-      async UploadFile({ file }) {
+      async UploadFile({ file, bucket = 'post-photos' } = {}) {
         const session = await requireSession();
         await ensureProfile(session.user);
 
         const ext = file.type?.includes('png') ? 'png' : 'jpg';
         const path = `${session.user.id}/${crypto.randomUUID()}.${ext}`;
+        const targetBucket = bucket === 'avatars' ? 'avatars' : 'post-photos';
 
-        const { error: upErr } = await supabase.storage.from('post-photos').upload(path, file, {
+        const { error: upErr } = await supabase.storage.from(targetBucket).upload(path, file, {
           contentType: file.type || 'image/jpeg',
           upsert: false,
         });
@@ -452,9 +455,13 @@ export function createSupabaseApi(supabase) {
 
         const {
           data: { publicUrl },
-        } = supabase.storage.from('post-photos').getPublicUrl(path);
+        } = supabase.storage.from(targetBucket).getPublicUrl(path);
 
         return { file_url: publicUrl };
+      },
+
+      async UploadAvatar({ file }) {
+        return this.UploadFile({ file, bucket: 'avatars' });
       },
     },
   };
