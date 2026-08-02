@@ -17,6 +17,7 @@ import Discover from '@/pages/Discover.jsx';
 import Account from '@/pages/Account.jsx';
 import Analytics from '@/pages/Analytics';
 import Auth from '@/pages/Auth';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const pageVariants = {
   initial: { opacity: 0, x: 24 },
@@ -62,11 +63,7 @@ const AuthenticatedApp = () => {
   }, []);
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-100 border-t-blue-500 rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (authError?.type === 'user_not_registered') {
