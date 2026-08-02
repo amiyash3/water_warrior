@@ -41,7 +41,8 @@ export const waterFacts = [
   "When fluid levels drop, blood volume decreases, forcing the heart to work harder to pump oxygen. — Mayo Clinic",
   "Sweat cools you down as it evaporates from your skin, requiring enough internal water reserves to function. — CDC",
   "Cartilage in joints contains about 80% water; staying hydrated keeps joints lubricated. — Arthritis Foundation",
-  "When you sweat heavily, you lose essential minerals like sodium and potassium that maintain fluid balance. — NIH"
+  "When you sweat heavily, you lose essential minerals like sodium and potassium that maintain fluid balance. — NIH",
+  "Our mascot's name is Wally the Water Warrior!"
 ];
 
 export function getRandomFact() {
