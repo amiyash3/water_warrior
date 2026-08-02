@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -62,9 +62,16 @@ const AuthenticatedApp = () => {
     document.documentElement.classList.remove('dark');
   }, []);
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return <LoadingScreen />;
-  }
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
+useEffect(() => {
+  const timer = setTimeout(() => setMinTimeElapsed(true), 4000);
+  return () => clearTimeout(timer);
+}, []);
+
+if (isLoadingPublicSettings || isLoadingAuth || !minTimeElapsed) {
+  return <LoadingScreen />;
+}
 
   if (authError?.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
