@@ -20,6 +20,7 @@ import {
 import UserAvatar from '@/components/UserAvatar';
 import HydrationCalendar from '@/components/HydrationCalendar';
 import MyBottlesManager from '@/components/MyBottlesManager';
+import CustomAmountInput from '@/components/CustomAmountInput';
 import { toast } from 'sonner';
 
 const GOAL_OPTIONS = [1000, 1500, 2000, 2500, 3000, 3500, 4000];
@@ -236,6 +237,10 @@ export default function Account() {
     </button>
   ))}
 </div>
+          <CustomAmountInput onSubmit={saveGoal} disabled={savingGoal} />
+          <p className="text-xs text-muted-foreground mt-1">
+            Currently set to {(me.daily_goal_ml || 2000)}ml · {Math.round((me.daily_goal_ml || 2000) / 29.574)}oz
+          </p>
           <p className="text-xs text-muted-foreground mt-3">Your streak increases each day you hit this goal.</p>
         </div>
       </div>

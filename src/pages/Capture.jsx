@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { BottlePicker, OTHER_BOTTLE_ID } from '@/components/MyBottlesManager';
+import CustomAmountInput from '@/components/CustomAmountInput';
 
 const BOTTLE_SIZES = [250, 500, 750, 1000];
 const MEDIA_TIMEOUT_MS = 15000;
@@ -642,42 +643,49 @@ export default function Capture() {
                     <Droplets className="w-3.5 h-3.5" />
                     Bottle size
                   </label>
-<p className="text-xs text-muted-foreground mb-1">ml</p>
-<div className="grid grid-cols-4 gap-2 mb-3">
-  {[250, 500, 750, 1000].map((s) => (
-    <button
-      key={s}
-      type="button"
-      onClick={() => setBottleSize(s)}
-      className={cn(
-        'py-3 rounded-2xl text-sm font-semibold transition-all border',
-        bottleSize === s
-          ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
-          : 'bg-background border-border hover:border-primary/40'
-      )}
-    >
-      {s}ml
-    </button>
-  ))}
-</div>
-<p className="text-xs text-muted-foreground mb-1">oz</p>
-<div className="grid grid-cols-6 gap-2">
-  {[8, 12, 16, 24, 32, 64].map((s) => (
-    <button
-      key={s}
-      type="button"
-onClick={() => setBottleSize(Math.round(s * 29.574))}
-      className={cn(
-        'py-3 rounded-2xl text-sm font-semibold transition-all border',
-Math.abs(bottleSize - Math.round(s * 29.574)) < 10
-          ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
-          : 'bg-background border-border hover:border-primary/40'
-      )}
-    >
-      {s}oz
-    </button>
-  ))}
-</div>                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mb-1">ml</p>
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {[250, 500, 750, 1000].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setBottleSize(s)}
+                        className={cn(
+                          'py-3 rounded-2xl text-sm font-semibold transition-all border',
+                          bottleSize === s
+                            ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+                            : 'bg-background border-border hover:border-primary/40'
+                        )}
+                      >
+                        {s}ml
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-1">oz</p>
+                  <div className="grid grid-cols-6 gap-2">
+                    {[8, 12, 16, 24, 32, 64].map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setBottleSize(Math.round(s * 29.574))}
+                        className={cn(
+                          'py-3 rounded-2xl text-sm font-semibold transition-all border',
+                          Math.abs(bottleSize - Math.round(s * 29.574)) < 10
+                            ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+                            : 'bg-background border-border hover:border-primary/40'
+                        )}
+                      >
+                        {s}oz
+                      </button>
+                    ))}
+                  </div>
+
+                  <CustomAmountInput onSubmit={setBottleSize} />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Currently set to {bottleSize}ml · {Math.round(bottleSize / 29.574)}oz
+                  </p>
+
+                  <p className="text-xs text-muted-foreground mt-2">
                     Save bottles in Account to track them in stats.
                   </p>
                 </>
