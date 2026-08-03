@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
-import { Droplets, Flame, Users, LogOut, Pencil, Check, X, Trash2, Target } from 'lucide-react';
+import { Droplets, Waves, Users, LogOut, Pencil, Check, X, Trash2, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +22,7 @@ import ProfilePhotoChooser from '@/components/ProfilePhotoChooser';
 import HydrationCalendar from '@/components/HydrationCalendar';
 import MyBottlesManager from '@/components/MyBottlesManager';
 import CustomAmountInput from '@/components/CustomAmountInput';
+import { Bottle } from '@/components/icons/Bottle';
 import { toast } from 'sonner';
 
 const GOAL_OPTIONS = [1000, 1500, 2000, 2500, 3000, 3500, 4000];
@@ -269,8 +270,8 @@ export default function Account() {
 
       <div className="px-5 -mt-12 relative">
         <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={Droplets} label="Bottles" value={posts.length} />
-          <StatCard icon={Flame} label="Streak" value={`${me.streak_count || 0}d`} />
+          <StatCard icon={Bottle} label="Bottles" value={posts.length} />
+          <StatCard icon={Waves} label="Streak" value={`${me.streak_count || 0}d`} />
           <StatCard icon={Users} label="Friends" value={(me.friends || []).length} />
         </div>
       </div>

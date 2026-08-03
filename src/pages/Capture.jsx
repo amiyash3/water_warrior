@@ -10,7 +10,6 @@ import {
   RefreshCw,
   AlertCircle,
   User,
-  ImagePlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,17 +18,23 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { BottlePicker, OTHER_BOTTLE_ID } from '@/components/MyBottlesManager';
 import CustomAmountInput from '@/components/CustomAmountInput';
+import { ensureCameraPermission } from '@/lib/hydrationCapture';
+import { getRandomFact } from '@/data/waterFacts';
 
 const BOTTLE_SIZES = [250, 500, 750, 1000];
 const MEDIA_TIMEOUT_MS = 15000;
 
 function isMobileDevice() {
   if (typeof navigator === 'undefined') return false;
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
 }
 
 function canUseLiveCamera() {
-  return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
+  return (
+    typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    !!window.isSecureContext
+  );
 }
 
 function withTimeout(promise, ms, message) {
@@ -43,21 +48,21 @@ function withTimeout(promise, ms, message) {
 
 function getCameraErrorMessage(err) {
   if (typeof window !== 'undefined' && !window.isSecureContext) {
-    return 'Live camera preview needs HTTPS. Use the buttons below to take photos with your phone camera instead.';
+    return 'Camera needs a secure connection. Rebuild the iOS app or use the https:// dev link.';
   }
   if (err?.message?.includes('timed out')) {
-    return 'Camera took too long to start. Try photo capture below or close other camera apps.';
+    return 'Camera took too long to start. Close other camera apps and try again.';
   }
-  if (err?.name === 'NotAllowedError') {
-    return 'Camera permission denied. Allow camera in browser settings, or use photo capture below.';
+  if (err?.name === 'NotAllowedError' || err?.message?.includes('permission')) {
+    return 'Camera permission denied. Allow camera in Settings → Water Warrior.';
   }
   if (err?.name === 'NotFoundError') {
-    return 'No camera found. Use photo capture below.';
+    return 'No camera found on this device.';
   }
   if (err?.name === 'NotReadableError' || err?.name === 'OverconstrainedError') {
-    return 'Camera is busy. Close other apps using the camera, or use photo capture below.';
+    return 'Camera is busy. Close other apps using the camera and try again.';
   }
-  return 'Could not start live camera. Use photo capture below.';
+  return err?.message || 'Could not start the in-app camera.';
 }
 
 function captureFrameFromVideo(videoEl) {
@@ -65,11 +70,26 @@ function captureFrameFromVideo(videoEl) {
   canvas.width = videoEl.videoWidth || 640;
   canvas.height = videoEl.videoHeight || 480;
   canvas.getContext('2d').drawImage(videoEl, 0, 0);
-  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Could not capture frame'))),
+      'image/jpeg',
+      0.92
+    );
+  });
+}
+
+async function waitForVideoFrame(videoEl, timeoutMs = 4000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (videoEl && videoEl.videoWidth > 0 && videoEl.readyState >= 2) return;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  throw new Error('Camera preview not ready');
 }
 
 function attachVideoStream(videoEl, stream) {
-  if (!videoEl) return Promise.resolve();
+  if (!videoEl) return Promise.reject(new Error('Camera view not ready'));
 
   videoEl.srcObject = stream;
   videoEl.muted = true;
@@ -100,9 +120,9 @@ function attachVideoStream(videoEl, stream) {
 
 async function getVideoStream(facingMode) {
   const attempts = [
+    { video: { facingMode: { ideal: facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
     { video: { facingMode: { ideal: facingMode } }, audio: false },
     { video: { facingMode }, audio: false },
-    { video: true, audio: false },
   ];
 
   let lastErr;
@@ -117,7 +137,34 @@ async function getVideoStream(facingMode) {
       lastErr = err;
     }
   }
-  throw lastErr;
+
+  // Last resort: pick a device by label
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter((d) => d.kind === 'videoinput');
+    const preferFront = facingMode === 'user';
+    const match =
+      cams.find((d) => {
+        const label = (d.label || '').toLowerCase();
+        if (preferFront) return label.includes('front') || label.includes('user') || label.includes('facetime');
+        return label.includes('back') || label.includes('rear') || label.includes('environment');
+      }) || (preferFront ? cams[0] : cams[cams.length - 1]);
+
+    if (match?.deviceId) {
+      return await withTimeout(
+        navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: match.deviceId } },
+          audio: false,
+        }),
+        MEDIA_TIMEOUT_MS,
+        'Camera timed out'
+      );
+    }
+  } catch (err) {
+    lastErr = err;
+  }
+
+  throw lastErr || new Error('Could not open camera');
 }
 
 function fileToPreview(blob) {
@@ -132,18 +179,13 @@ export default function Capture() {
   const backVideoRef = useRef(null);
   const frontStreamRef = useRef(null);
   const backStreamRef = useRef(null);
-  const bottleInputRef = useRef(null);
-  const selfieInputRef = useRef(null);
   const mountedRef = useRef(true);
 
-  /** live = getUserMedia preview | native = two-step file/camera inputs (works on HTTP) */
-  const [captureMethod, setCaptureMethod] = useState(() =>
-    isMobileDevice() && !canUseLiveCamera() ? 'native' : 'live'
-  );
-  const [nativeStep, setNativeStep] = useState('bottle'); // bottle | selfie | done
-
-  const [cameraState, setCameraState] = useState('idle');
+  const [cameraState, setCameraState] = useState('loading'); // loading | ready | capturing | captured | error
   const [cameraError, setCameraError] = useState('');
+  const [captureHint, setCaptureHint] = useState(''); // status text while snapping
+  const [loadingFact, setLoadingFact] = useState(() => getRandomFact());
+  const [showSelfieLive, setShowSelfieLive] = useState(false);
   const [frontBlob, setFrontBlob] = useState(null);
   const [backBlob, setBackBlob] = useState(null);
   const [frontPreview, setFrontPreview] = useState(null);
@@ -154,7 +196,6 @@ export default function Capture() {
   const [bottles, setBottles] = useState([]);
   const [selectedBottleId, setSelectedBottleId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [capturing, setCapturing] = useState(false);
 
   const revokePreview = (url) => {
     if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -169,24 +210,26 @@ export default function Capture() {
     if (backVideoRef.current) backVideoRef.current.srcObject = null;
   }, []);
 
-  const switchToNativeCapture = useCallback(() => {
-    stopStreams();
-    setCaptureMethod('native');
-    setNativeStep(frontBlob && backBlob ? 'done' : backBlob ? 'selfie' : 'bottle');
-    setCameraError('');
-    setCameraState(frontBlob && backBlob ? 'captured' : 'ready');
-  }, [stopStreams, frontBlob, backBlob]);
-
   const startLiveCameras = useCallback(async () => {
+    setLoadingFact(getRandomFact());
     setCameraState('loading');
     setCameraError('');
+    setShowSelfieLive(false);
+    setCaptureHint('');
     stopStreams();
 
     try {
       if (!canUseLiveCamera()) {
-        switchToNativeCapture();
-        return;
+        throw new Error('In-app camera is not available in this context.');
       }
+
+      const allowed = await ensureCameraPermission();
+      if (!allowed) {
+        throw Object.assign(new Error('Camera permission denied'), { name: 'NotAllowedError' });
+      }
+
+      // Let React paint the <video> elements before attaching streams
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       if (isMobile.current) {
         const backStream = await getVideoStream('environment');
@@ -196,15 +239,15 @@ export default function Capture() {
         }
         backStreamRef.current = backStream;
         await attachVideoStream(backVideoRef.current, backStream);
-        if (mountedRef.current) {
-          setCaptureMethod('live');
-          setCameraState('ready');
-        }
+        await waitForVideoFrame(backVideoRef.current);
+        if (mountedRef.current) setCameraState('ready');
         return;
       }
 
-      const frontStream = await getVideoStream('user');
-      const backStream = await getVideoStream('environment');
+      const [frontStream, backStream] = await Promise.all([
+        getVideoStream('user'),
+        getVideoStream('environment'),
+      ]);
 
       if (!mountedRef.current) {
         frontStream.getTracks().forEach((t) => t.stop());
@@ -214,41 +257,30 @@ export default function Capture() {
 
       frontStreamRef.current = frontStream;
       backStreamRef.current = backStream;
+      setShowSelfieLive(true);
 
       await Promise.all([
         attachVideoStream(frontVideoRef.current, frontStream),
         attachVideoStream(backVideoRef.current, backStream),
       ]);
+      await Promise.all([
+        waitForVideoFrame(frontVideoRef.current),
+        waitForVideoFrame(backVideoRef.current),
+      ]);
 
-      if (mountedRef.current) {
-        setCaptureMethod('live');
-        setCameraState('ready');
-      }
+      if (mountedRef.current) setCameraState('ready');
     } catch (err) {
       console.error(err);
       stopStreams();
       if (!mountedRef.current) return;
-
-      if (isMobile.current) {
-        setCameraError(getCameraErrorMessage(err));
-        switchToNativeCapture();
-        toast.message('Using photo capture mode', {
-          description: 'Take a bottle photo, then a selfie.',
-        });
-      } else {
-        setCameraError(getCameraErrorMessage(err));
-        setCameraState('error');
-      }
+      setCameraError(getCameraErrorMessage(err));
+      setCameraState('error');
     }
-  }, [stopStreams, switchToNativeCapture]);
+  }, [stopStreams]);
 
   useEffect(() => {
     mountedRef.current = true;
-    if (captureMethod === 'native') {
-      setCameraState('ready');
-    } else {
-      startLiveCameras();
-    }
+    startLiveCameras();
     api.entities.UserBottle.list()
       .then((list) => {
         setBottles(list);
@@ -272,90 +304,93 @@ export default function Capture() {
     if (bottle) setBottleSize(bottle.size_ml);
   };
 
-  const handleNativeFile = (kind, file) => {
-    if (!file) return;
-
-    if (kind === 'bottle') {
-      revokePreview(backPreview);
-      setBackBlob(file);
-      setBackPreview(fileToPreview(file));
-      setNativeStep('selfie');
-      toast.success('Bottle photo captured — now take your selfie');
-    } else {
-      revokePreview(frontPreview);
-      setFrontBlob(file);
-      setFrontPreview(fileToPreview(file));
-      setNativeStep('done');
-      setCameraState('captured');
-      toast.success('Both photos ready!');
-    }
-  };
-
-  const captureLiveShutter = async () => {
-    if (capturing) return;
-    setCapturing(true);
+  const onShutter = async () => {
+    if (cameraState !== 'ready') return;
+    setLoadingFact(getRandomFact());
+    setCameraState('capturing');
+    setCaptureHint('Capturing…');
 
     try {
       if (isMobile.current) {
         if (!backVideoRef.current) throw new Error('Camera not ready');
+        await waitForVideoFrame(backVideoRef.current, 1500);
 
+        // 1) Bottle / rear frame from the live preview (no system camera)
         const backFrame = await captureFrameFromVideo(backVideoRef.current);
-        stopStreams();
 
-        let frontFrame = null;
-        try {
-          const frontStream = await getVideoStream('user');
-          frontStreamRef.current = frontStream;
-          await attachVideoStream(frontVideoRef.current, frontStream);
-          await new Promise((r) => setTimeout(r, 500));
-          if (frontVideoRef.current?.videoWidth) {
-            frontFrame = await captureFrameFromVideo(frontVideoRef.current);
-          }
-          stopStreams();
-        } catch (selfieErr) {
-          console.warn('Live selfie failed, falling back to native', selfieErr);
-          stopStreams();
-          setBackBlob(backFrame);
-          setBackPreview(fileToPreview(backFrame));
-          setNativeStep('selfie');
-          setCaptureMethod('native');
-          setCameraState('ready');
-          toast.message('Now take your selfie', {
-            description: 'Tap the button below to open the front camera.',
-          });
+        // Freeze rear preview visually
+        const backUrl = fileToPreview(backFrame);
+        setBackBlob(backFrame);
+        setBackPreview((prev) => {
+          if (prev && prev !== backUrl) revokePreview(prev);
+          return backUrl;
+        });
+
+        // 2) Switch to front camera in-app and grab selfie
+        setLoadingFact(getRandomFact());
+        setCaptureHint('Snapping selfie…');
+        stopStreams();
+        setShowSelfieLive(true);
+
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+        const frontStream = await getVideoStream('user');
+        if (!mountedRef.current) {
+          frontStream.getTracks().forEach((t) => t.stop());
           return;
         }
+        frontStreamRef.current = frontStream;
+        await attachVideoStream(frontVideoRef.current, frontStream);
+        await waitForVideoFrame(frontVideoRef.current);
+        await new Promise((r) => setTimeout(r, 200));
 
-        if (!frontFrame) throw new Error('Could not capture selfie');
+        const frontFrame = await captureFrameFromVideo(frontVideoRef.current);
+        stopStreams();
+        setShowSelfieLive(false);
 
-        setBackBlob(backFrame);
+        const frontUrl = fileToPreview(frontFrame);
         setFrontBlob(frontFrame);
-        setBackPreview(fileToPreview(backFrame));
-        setFrontPreview(fileToPreview(frontFrame));
+        setFrontPreview((prev) => {
+          if (prev && prev !== frontUrl) revokePreview(prev);
+          return frontUrl;
+        });
         setCameraState('captured');
+        setCaptureHint('');
         return;
       }
 
-      if (!frontVideoRef.current || !backVideoRef.current) return;
+      // Desktop: both streams already live
+      if (!frontVideoRef.current || !backVideoRef.current) throw new Error('Camera not ready');
 
       const [fBlob, bBlob] = await Promise.all([
         captureFrameFromVideo(frontVideoRef.current),
         captureFrameFromVideo(backVideoRef.current),
       ]);
 
+      stopStreams();
+      setShowSelfieLive(false);
+
+      const frontUrl = fileToPreview(fBlob);
+      const backUrl = fileToPreview(bBlob);
       setFrontBlob(fBlob);
       setBackBlob(bBlob);
-      setFrontPreview(fileToPreview(fBlob));
-      setBackPreview(fileToPreview(bBlob));
-      stopStreams();
+      setFrontPreview((prev) => {
+        if (prev && prev !== frontUrl) revokePreview(prev);
+        return frontUrl;
+      });
+      setBackPreview((prev) => {
+        if (prev && prev !== backUrl) revokePreview(prev);
+        return backUrl;
+      });
       setCameraState('captured');
+      setCaptureHint('');
     } catch (err) {
       console.error(err);
+      stopStreams();
+      setShowSelfieLive(false);
       toast.error(getCameraErrorMessage(err));
-      if (isMobile.current) switchToNativeCapture();
-      else startLiveCameras();
-    } finally {
-      setCapturing(false);
+      setCaptureHint('');
+      startLiveCameras();
     }
   };
 
@@ -366,15 +401,8 @@ export default function Capture() {
     setBackBlob(null);
     setFrontPreview(null);
     setBackPreview(null);
-    setNativeStep('bottle');
-
-    if (captureMethod === 'native' || !canUseLiveCamera()) {
-      setCaptureMethod('native');
-      setCameraState('ready');
-      return;
-    }
-
-    setCaptureMethod('live');
+    setCaptureHint('');
+    setShowSelfieLive(false);
     startLiveCameras();
   };
 
@@ -411,9 +439,8 @@ export default function Capture() {
         .filter((p) => p.created_date?.slice(0, 10) === today)
         .reduce((sum, p) => sum + (p.bottle_size_ml || 500), 0);
 
-      const hitGoalToday = todayMl >= goalMl;
-      let newStreak = me.streak_count || 0;
-      if (hitGoalToday) {
+      if (todayMl >= goalMl) {
+        let newStreak = me.streak_count || 0;
         if (me.last_goal_date === today) {
           newStreak = me.streak_count || 1;
         } else if (me.last_goal_date === yesterday) {
@@ -434,48 +461,15 @@ export default function Capture() {
     }
   };
 
-  const showLivePreview = captureMethod === 'live' && cameraState !== 'captured';
-  const showPipPlaceholder =
-    captureMethod === 'live' && isMobile.current && cameraState === 'ready' && !frontPreview;
-
-  const nativeBottlePreview = captureMethod === 'native' && backPreview;
-  const nativeSelfiePreview = captureMethod === 'native' && frontPreview;
+  const showLive = cameraState === 'loading' || cameraState === 'ready' || cameraState === 'capturing';
+  const showShutter = cameraState === 'ready';
 
   return (
     <div className="min-h-[calc(100vh-80px)] p-5 pb-32">
-      <input
-        ref={bottleInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => {
-          handleNativeFile('bottle', e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-      <input
-        ref={selfieInputRef}
-        type="file"
-        accept="image/*"
-        capture="user"
-        className="hidden"
-        onChange={(e) => {
-          handleNativeFile('selfie', e.target.files?.[0]);
-          e.target.value = '';
-        }}
-      />
-
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Capture</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {captureMethod === 'native'
-              ? 'Step 1: bottle photo · Step 2: selfie'
-              : isMobile.current
-                ? 'Rear live preview — shutter, then selfie'
-                : 'Both cameras live — tap to capture'}
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Tap the shutter to show your hydration</p>
         </div>
         <button
           type="button"
@@ -486,125 +480,82 @@ export default function Capture() {
         </button>
       </div>
 
-      {!window.isSecureContext && isMobile.current && captureMethod === 'native' && (
-        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          You&apos;re on HTTP (not secure). Photo capture mode works; for live preview use{' '}
-          <span className="font-semibold">npm run dev:mobile</span> and open the{' '}
-          <span className="font-semibold">https://</span> link.
-        </div>
-      )}
-
       <div className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-black mb-6 shadow-2xl shadow-primary/10">
-        {showLivePreview && (
-          <video
-            ref={backVideoRef}
-            className="w-full h-full object-cover"
-            playsInline
-            muted
-            autoPlay
-          />
-        )}
+        {/* Keep videos mounted whenever we might need them so refs stay valid */}
+        <video
+          ref={backVideoRef}
+          className={cn(
+            'w-full h-full object-cover',
+            showLive && cameraState !== 'captured' ? 'block' : 'hidden'
+          )}
+          playsInline
+          muted
+          autoPlay
+        />
 
-        {nativeBottlePreview && cameraState !== 'captured' && (
-          <img src={backPreview} alt="Bottle" className="w-full h-full object-cover opacity-40" />
-        )}
         {cameraState === 'captured' && backPreview && (
           <img src={backPreview} alt="Bottle" className="w-full h-full object-cover" />
         )}
 
-        <div className="absolute top-4 left-4 w-28 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-white/90 shadow-2xl bg-black">
-          {showPipPlaceholder && (
+        {/* During mobile capture, briefly freeze rear still under selfie */}
+        {cameraState === 'capturing' && backPreview && (
+          <img src={backPreview} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+
+        <div className="absolute top-4 left-4 w-28 aspect-[3/4] rounded-2xl overflow-hidden border-2 border-white/90 shadow-2xl bg-black z-[5]">
+          {showLive && !showSelfieLive && cameraState !== 'captured' && (
             <div className="w-full h-full flex flex-col items-center justify-center text-white/80 p-2 text-center">
               <User className="w-8 h-8 mb-1" />
               <span className="text-[10px] font-medium leading-tight">Selfie on capture</span>
             </div>
           )}
-          {showLivePreview && !showPipPlaceholder && (
-            <video
-              ref={frontVideoRef}
-              className="w-full h-full object-cover scale-x-[-1]"
-              playsInline
-              muted
-              autoPlay
-            />
-          )}
-          {(nativeSelfiePreview || (cameraState === 'captured' && frontPreview)) && (
-            <img
-              src={frontPreview}
-              alt="You"
-              className={cn(
-                'w-full h-full object-cover scale-x-[-1]',
-                cameraState === 'captured' || nativeSelfiePreview ? 'block' : 'hidden'
-              )}
-            />
+
+          <video
+            ref={frontVideoRef}
+            className={cn(
+              'w-full h-full object-cover scale-x-[-1]',
+              showSelfieLive && cameraState !== 'captured' ? 'block' : 'hidden'
+            )}
+            playsInline
+            muted
+            autoPlay
+          />
+
+          {cameraState === 'captured' && frontPreview && (
+            <img src={frontPreview} alt="You" className="w-full h-full object-cover scale-x-[-1]" />
           )}
         </div>
 
-        {captureMethod === 'native' && cameraState !== 'captured' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 z-10">
-            {nativeStep === 'bottle' && (
-              <>
-                <p className="text-white text-center text-sm font-medium px-4">
-                  Step 1 of 2 — photograph your water bottle
-                </p>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="rounded-full water-gradient border-0"
-                  onClick={() => bottleInputRef.current?.click()}
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  Take bottle photo
-                </Button>
-              </>
-            )}
-            {nativeStep === 'selfie' && (
-              <>
-                <p className="text-white text-center text-sm font-medium px-4">
-                  Step 2 of 2 — now take your selfie
-                </p>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="rounded-full water-gradient border-0"
-                  onClick={() => selfieInputRef.current?.click()}
-                >
-                  <User className="w-5 h-5 mr-2" />
-                  Take selfie
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-
-        {(cameraState === 'loading' || capturing) && captureMethod === 'live' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white gap-3 z-10">
-            <Loader2 className="w-10 h-10 animate-spin" />
+        {(cameraState === 'loading' || cameraState === 'capturing') && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white gap-4 px-8 z-10 pointer-events-none">
+            <Loader2 className="w-9 h-9 animate-spin shrink-0" />
             <p className="text-sm font-medium">
-              {capturing ? 'Snapping selfie…' : 'Starting camera…'}
+              {cameraState === 'loading' ? 'Starting camera…' : captureHint || 'Capturing…'}
             </p>
-          </div>
-        )}
-
-        {cameraState === 'error' && captureMethod === 'live' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white gap-4 p-6 text-center z-10">
-            <AlertCircle className="w-10 h-10 text-red-400" />
-            <p className="text-sm">{cameraError}</p>
-            <div className="flex flex-col gap-2 w-full max-w-xs">
-              <Button size="sm" variant="secondary" onClick={startLiveCameras}>
-                <RefreshCw className="w-4 h-4 mr-2" /> Try live camera
-              </Button>
-              <Button size="sm" className="water-gradient border-0" onClick={switchToNativeCapture}>
-                <ImagePlus className="w-4 h-4 mr-2" /> Use photo capture
-              </Button>
+            <div className="max-w-[16rem] text-center space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                Did you know…
+              </p>
+              <p className="text-sm leading-relaxed text-white/90">{loadingFact}</p>
             </div>
           </div>
         )}
 
-        {captureMethod === 'live' && cameraState === 'ready' && !capturing && (
+        {cameraState === 'error' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white gap-4 p-6 text-center z-10">
+            <AlertCircle className="w-10 h-10 text-red-400" />
+            <p className="text-sm">{cameraError}</p>
+            <Button size="sm" variant="secondary" onClick={startLiveCameras}>
+              <RefreshCw className="w-4 h-4 mr-2" /> Try again
+            </Button>
+          </div>
+        )}
+
+        {showShutter && (
           <button
             type="button"
-            onClick={captureLiveShutter}
+            onClick={onShutter}
+            aria-label="Tap the shutter to show your hydration"
             className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white/90 hover:bg-white active:scale-95 transition-all shadow-2xl flex items-center justify-center z-10"
           >
             <div className="w-16 h-16 rounded-full water-gradient flex items-center justify-center">

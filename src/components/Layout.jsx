@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Home, Camera, Users, User, Droplets, BarChart2 } from 'lucide-react';
+import { Home, Camera, Users, User, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api/client';
 import UsernameSetup from './UsernameSetup';
+import wallyMascot from '@/assets/wally-mascot.png';
 
 const navItems = [
   { to: '/', icon: Home, label: 'Feed' },
@@ -33,10 +34,12 @@ export default function Layout() {
       {/* Top bar */}
       <header className="sticky top-0 z-40 glass border-b border-border/50 pt-[env(safe-area-inset-top)]">
         <div className="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full water-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-              <Droplets className="w-5 h-5 text-white" strokeWidth={2.5} />
-            </div>
+          <div className="flex items-center gap-2.5">
+            <img
+              src={wallyMascot}
+              alt="Wally the Water Warrior"
+              className="w-10 h-10 rounded-full object-cover shadow-lg shadow-primary/20 ring-2 ring-primary/25 bg-white"
+            />
             <div>
               <h1 className="text-lg font-bold tracking-tight leading-none">Water Warrior</h1>
               <p className="text-[10px] text-muted-foreground tracking-wider uppercase mt-0.5">Stay Hydrated</p>
