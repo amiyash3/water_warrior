@@ -17,8 +17,11 @@ const config: CapacitorConfig = {
     },
   },
   ios: {
-    contentInset: 'automatic',
+    // Let CSS handle safe areas (viewport-fit=cover). Automatic inset
+    // double-pads and exposes the WebView's black bounce regions.
+    contentInset: 'never',
   },
+  backgroundColor: '#ffffff',
 };
 
 export default config;
