@@ -27,5 +27,7 @@ Please do not send your password, authentication codes, or other sensitive crede
 
 - [Privacy Policy](../privacy-policy/)
 - [Privacy Choices](../privacy-choices/)
+- [Terms of Service](../terms-of-service/)
+- [Community Guidelines](../community-guidelines/)
 
 

@@ -5,6 +5,8 @@ import { Search, UserPlus, Check, Clock, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import UserAvatar from '@/components/UserAvatar';
+import ContentActionsMenu from '@/components/ContentActionsMenu';
+import { isUserBlocked } from '@/services/moderation';
 import { toast } from 'sonner';
 
 export default function Discover() {
@@ -16,6 +18,13 @@ export default function Discover() {
 
   useEffect(() => {
     load();
+    const onBlocked = () => load();
+    window.addEventListener('ww:user-blocked', onBlocked);
+    window.addEventListener('ww:user-unblocked', onBlocked);
+    return () => {
+      window.removeEventListener('ww:user-blocked', onBlocked);
+      window.removeEventListener('ww:user-unblocked', onBlocked);
+    };
   }, []);
 
   const load = async () => {
@@ -44,6 +53,14 @@ export default function Discover() {
     });
 
   const sendRequest = async (user) => {
+    try {
+      if (await isUserBlocked(user.id)) {
+        toast.error('You cannot interact with a blocked user.');
+        return;
+      }
+    } catch (_) {
+      // proceed; RLS will reject if blocked the other way
+    }
     await api.entities.FriendRequest.create({
       from_email: me.email,
       to_email: user.email,
@@ -161,6 +178,13 @@ export default function Discover() {
                       <UserPlus className="w-3.5 h-3.5 mr-1" /> Add
                     </Button>
                   )}
+                  <ContentActionsMenu
+                    targetType="profile"
+                    targetId={user.id}
+                    reportedUserId={user.id}
+                    isOwn={false}
+                    onBlocked={() => load()}
+                  />
                 </div>
               );
             })}

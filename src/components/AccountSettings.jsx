@@ -12,6 +12,8 @@ import {
   Lock,
   Mail,
   Loader2,
+  LifeBuoy,
+  Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +39,8 @@ import {
   cancelHydrationReminders,
   scheduleHydrationReminders,
 } from '@/services/hydrationNotifications';
+import BlockedUsersPanel from '@/components/BlockedUsersPanel';
+import { openExternalUrl } from '@/lib/openExternalUrl';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -45,10 +49,13 @@ export const LEGAL_URLS = {
   privacyChoices: 'https://amiyash3.github.io/water_warrior/privacy-choices/',
   support: 'https://amiyash3.github.io/water_warrior/support/',
   termsOfService: 'https://amiyash3.github.io/water_warrior/terms-of-service/',
+  communityGuidelines: 'https://amiyash3.github.io/water_warrior/community-guidelines/',
 };
 
 function openExternal(url) {
-  window.open(url, '_blank', 'noopener,noreferrer');
+  openExternalUrl(url).catch(() => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  });
 }
 
 function SettingsRow({ icon: Icon, label, description, onClick, trailing, destructive }) {
@@ -303,8 +310,54 @@ function AboutPanel({ onBack }) {
           onClick={() => openExternal(LEGAL_URLS.privacyPolicy)}
           trailing={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
         />
+        <SettingsRow
+          label="Community Guidelines"
+          onClick={() => openExternal(LEGAL_URLS.communityGuidelines)}
+          trailing={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
+        />
       </SettingsCard>
       <p className="text-xs text-muted-foreground text-center mt-6">Water Warrior</p>
+    </div>
+  );
+}
+
+function HelpSafetyPanel({ onBack, onOpenBlocked }) {
+  return (
+    <div className="px-5 pb-10">
+      <PanelHeader title="Help & Safety" onBack={onBack} />
+      <SettingsCard className="mb-4">
+        <SettingsRow
+          label="Community Guidelines"
+          description="What is and is not allowed"
+          onClick={() => openExternal(LEGAL_URLS.communityGuidelines)}
+          trailing={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
+        />
+        <SettingsRow
+          label="Privacy Policy"
+          onClick={() => openExternal(LEGAL_URLS.privacyPolicy)}
+          trailing={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
+        />
+        <SettingsRow
+          label="Terms of Service"
+          onClick={() => openExternal(LEGAL_URLS.termsOfService)}
+          trailing={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
+        />
+      </SettingsCard>
+      <SettingsCard>
+        <SettingsRow
+          icon={Ban}
+          label="Blocked Users"
+          description="Manage people you have blocked"
+          onClick={onOpenBlocked}
+          trailing={<ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        />
+        <SettingsRow
+          label="Contact Support"
+          description="Get help with your account"
+          onClick={() => openExternal(LEGAL_URLS.support)}
+          trailing={<ExternalLink className="w-4 h-4 text-muted-foreground" />}
+        />
+      </SettingsCard>
     </div>
   );
 }
@@ -314,7 +367,7 @@ function AboutPanel({ onBack }) {
  * @param {{ me: object, onClose: () => void, onDeleteAccount: () => void, deletingAccount: boolean }} props
  */
 export default function AccountSettings({ me, onClose, onDeleteAccount, deletingAccount }) {
-  const [panel, setPanel] = useState('root'); // root | profile | privacy | about
+  const [panel, setPanel] = useState('root'); // root | profile | privacy | about | help | blocked
   const [notificationsOn, setNotificationsOn] = useState(() => getNotificationsEnabled());
   const [togglingNotifications, setTogglingNotifications] = useState(false);
 
@@ -376,6 +429,17 @@ export default function AccountSettings({ me, onClose, onDeleteAccount, deleting
   if (panel === 'about') {
     return <AboutPanel onBack={() => setPanel('root')} />;
   }
+  if (panel === 'help') {
+    return (
+      <HelpSafetyPanel
+        onBack={() => setPanel('root')}
+        onOpenBlocked={() => setPanel('blocked')}
+      />
+    );
+  }
+  if (panel === 'blocked') {
+    return <BlockedUsersPanel onBack={() => setPanel('help')} />;
+  }
 
   return (
     <div className="px-5 pb-10">
@@ -410,6 +474,13 @@ export default function AccountSettings({ me, onClose, onDeleteAccount, deleting
           label="Privacy"
           description="Policy, choices, support, delete account"
           onClick={() => setPanel('privacy')}
+          trailing={<ChevronRight className="w-4 h-4 text-muted-foreground" />}
+        />
+        <SettingsRow
+          icon={LifeBuoy}
+          label="Help & Safety"
+          description="Guidelines, legal links, blocked users"
+          onClick={() => setPanel('help')}
           trailing={<ChevronRight className="w-4 h-4 text-muted-foreground" />}
         />
         <SettingsRow

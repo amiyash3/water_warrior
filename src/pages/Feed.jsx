@@ -49,6 +49,19 @@ export default function Feed() {
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
+  useEffect(() => {
+    const onBlocked = (e) => {
+      const blockedId = e.detail?.userId;
+      if (blockedId) {
+        setPosts((prev) => prev.filter((p) => p.user_id !== blockedId));
+      } else {
+        loadFeed(true);
+      }
+    };
+    window.addEventListener('ww:user-blocked', onBlocked);
+    return () => window.removeEventListener('ww:user-blocked', onBlocked);
+  }, [loadFeed]);
+
   // ── Pull-to-refresh touch handlers ──────────────────────────
   const onTouchStart = (e) => {
     const el = scrollRef.current;
@@ -146,7 +159,14 @@ export default function Feed() {
 
       <div className="p-5 space-y-5">
         {posts.map(post => (
-          <PostCard key={post.id} post={post} author={users[post.created_by]} />
+          <PostCard
+            key={post.id}
+            post={post}
+            author={users[post.created_by]}
+            onAuthorBlocked={() =>
+              setPosts((prev) => prev.filter((p) => p.user_id !== post.user_id))
+            }
+          />
         ))}
       </div>
     </div>

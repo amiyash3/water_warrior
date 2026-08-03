@@ -79,6 +79,7 @@ export function createSupabaseApi(supabase) {
   function mapPostRow(row) {
     return {
       id: row.id,
+      user_id: row.user_id,
       created_by: row.author_email,
       created_date: row.created_at,
       front_photo_url: row.front_photo_url,
@@ -87,6 +88,7 @@ export function createSupabaseApi(supabase) {
       location: row.location ?? '',
       bottle_size_ml: row.bottle_size_ml ?? 500,
       bottle_id: row.bottle_id ?? null,
+      moderation_status: row.moderation_status ?? 'visible',
     };
   }
 
@@ -215,31 +217,45 @@ export function createSupabaseApi(supabase) {
         const session = await requireSession();
         await ensureProfile(session.user);
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('id', session.user.id)
-          .single();
+        const { data: fnData, error } = await supabase.functions.invoke(
+          'publish-social-content',
+          {
+            body: {
+              type: 'post',
+              front_photo_url: data.front_photo_url,
+              back_photo_url: data.back_photo_url,
+              caption: data.caption ?? '',
+              location: data.location ?? '',
+              bottle_size_ml: data.bottle_size_ml ?? 500,
+              bottle_id: data.bottle_id ?? null,
+            },
+          }
+        );
 
-        const row = {
-          user_id: session.user.id,
-          author_email: profile?.email ?? session.user.email ?? '',
-          front_photo_url: data.front_photo_url,
-          back_photo_url: data.back_photo_url,
-          caption: data.caption ?? '',
-          location: data.location ?? '',
-          bottle_size_ml: data.bottle_size_ml ?? 500,
-          bottle_id: data.bottle_id ?? null,
-        };
+        if (error) {
+          const msg =
+            fnData?.code === 'CONTENT_REJECTED'
+              ? 'This content may violate the Water Warrior Community Guidelines.'
+              : fnData?.message || error.message || 'Could not publish post';
+          throw Object.assign(new Error(msg), { code: fnData?.code });
+        }
 
-        const { data: inserted, error } = await supabase
-          .from('water_posts')
-          .insert(row)
-          .select('*')
-          .single();
+        if (fnData && fnData.ok === false) {
+          throw Object.assign(
+            new Error(
+              fnData.code === 'CONTENT_REJECTED'
+                ? 'This content may violate the Water Warrior Community Guidelines.'
+                : fnData.message || 'Could not publish post'
+            ),
+            { code: fnData.code }
+          );
+        }
 
-        if (error) throw error;
-        return mapPostRow(inserted);
+        if (!fnData?.post) {
+          throw new Error('Could not publish post');
+        }
+
+        return mapPostRow(fnData.post);
       },
 
       async delete(id) {

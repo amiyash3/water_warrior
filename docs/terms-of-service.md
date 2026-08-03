@@ -64,6 +64,8 @@ Circumvent access controls, moderation systems, rate limits, or account restrict
 Use automated systems to create accounts or manipulate activity
 Use the Service for any illegal or unauthorized purpose
 We may investigate suspected violations and remove content, limit functionality, suspend accounts, or terminate access.
+Additional community expectations are described in the Water Warrior Community Guidelines:
+https://amiyash3.github.io/water_warrior/community-guidelines/
 7. User Content
 “User Content” means content that users submit or make available through Water Warrior, including profile information, usernames, images, posts, comments, reactions, and other materials.
 You retain ownership of your User Content.

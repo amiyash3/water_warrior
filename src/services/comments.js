@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { publishSocialContent, GUIDELINES_MESSAGE } from '@/services/moderation';
 
 export async function getComments(postId) {
   const { data, error } = await supabase
@@ -11,20 +12,24 @@ export async function getComments(postId) {
   return data;
 }
 
-export async function addComment({ postId, userId, authorEmail, content }) {
-  const { data, error } = await supabase
-    .from('water_post_comments')
-    .insert({
-      post_id: postId,
-      user_id: userId,
-      author_email: authorEmail,
-      content,
-    })
-    .select('*, profiles(username, full_name, email)')
-    .single();
+/**
+ * Create a comment via the trusted publish Edge Function.
+ * Author is derived server-side from the session — do not pass userId.
+ * @param {{ postId: string, content: string }} params
+ */
+export async function addComment({ postId, content }) {
+  const data = await publishSocialContent({
+    type: 'comment',
+    post_id: postId,
+    content,
+  });
 
-  if (error) throw error;
-  return data;
+  if (!data?.comment) {
+    throw Object.assign(new Error(data?.message || GUIDELINES_MESSAGE), {
+      code: data?.code,
+    });
+  }
+  return data.comment;
 }
 
 export async function deleteComment(commentId) {

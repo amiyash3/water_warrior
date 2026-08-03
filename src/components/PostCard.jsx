@@ -4,29 +4,42 @@ import { Droplets, MapPin } from 'lucide-react';
 import UserAvatar from './UserAvatar';
 import DualPhotoView from './DualPhotoView';
 import CommentSection from './CommentSection';
+import ContentActionsMenu from './ContentActionsMenu';
+import { useAuth } from '@/lib/AuthContext';
 
-export default function PostCard({ post, author }) {
-  const user = author || { email: post.created_by, username: post.created_by?.split('@')[0] };
+export default function PostCard({ post, author, onAuthorBlocked }) {
+  const { user } = useAuth();
+  const userProfile = author || { email: post.created_by, username: post.created_by?.split('@')[0] };
+  const authorId = post.user_id || author?.id;
+  const isOwn = Boolean(user?.id && authorId && user.id === authorId);
   const timeAgo = post.created_date
     ? formatDistanceToNow(new Date(post.created_date), { addSuffix: true })
     : '';
+
   return (
     <article className="bg-card rounded-3xl overflow-hidden border border-border/50 shadow-sm hover:shadow-lg hover:shadow-primary/5 transition-all">
       <header className="flex items-center gap-3 p-4">
-        <UserAvatar user={user} size="md" />
+        <UserAvatar user={userProfile} size="md" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm leading-tight truncate">
-            {user.username || user.full_name || user.email}
+            {userProfile.username || userProfile.full_name || userProfile.email}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">{timeAgo}</p>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
           <Droplets className="w-3.5 h-3.5" />
-{post.bottle_size_ml >= 1000
-  ? `${(post.bottle_size_ml / 1000).toFixed(1)}L`
-  : `${post.bottle_size_ml || 500}ml`
-} · {Math.round((post.bottle_size_ml || 500) / 29.574)}oz
+          {post.bottle_size_ml >= 1000
+            ? `${(post.bottle_size_ml / 1000).toFixed(1)}L`
+            : `${post.bottle_size_ml || 500}ml`}{' '}
+          · {Math.round((post.bottle_size_ml || 500) / 29.574)}oz
         </div>
+        <ContentActionsMenu
+          targetType="post"
+          targetId={post.id}
+          reportedUserId={authorId}
+          isOwn={isOwn}
+          onBlocked={onAuthorBlocked}
+        />
       </header>
       <div className="px-4">
         <DualPhotoView frontUrl={post.front_photo_url} backUrl={post.back_photo_url} />

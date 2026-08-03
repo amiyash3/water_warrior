@@ -20,6 +20,8 @@ import { BottlePicker, OTHER_BOTTLE_ID } from '@/components/MyBottlesManager';
 import CustomAmountInput from '@/components/CustomAmountInput';
 import { ensureCameraPermission } from '@/lib/hydrationCapture';
 import { getRandomFact } from '@/data/waterFacts';
+import { openExternalUrl } from '@/lib/openExternalUrl';
+import { LEGAL_URLS } from '@/components/AccountSettings';
 
 const BOTTLE_SIZES = [250, 500, 750, 1000];
 const MEDIA_TIMEOUT_MS = 15000;
@@ -455,7 +457,12 @@ export default function Capture() {
       navigate('/');
     } catch (err) {
       console.error(err);
-      toast.error('Could not share your post. Please try again.');
+      toast.error(
+        err?.code === 'CONTENT_REJECTED' ||
+          err?.message?.includes('Community Guidelines')
+          ? err.message
+          : 'Could not share your post. Please try again.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -653,6 +660,7 @@ export default function Capture() {
                 onChange={(e) => setCaption(e.target.value)}
                 className="rounded-2xl border-border resize-none"
                 rows={3}
+                maxLength={500}
               />
             </div>
 
@@ -665,8 +673,21 @@ export default function Capture() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 className="rounded-2xl border-border"
+                maxLength={200}
               />
             </div>
+
+            <p className="text-xs text-muted-foreground leading-snug">
+              Captions are screened against our{' '}
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:text-foreground"
+                onClick={() => openExternalUrl(LEGAL_URLS.communityGuidelines)}
+              >
+                Community Guidelines
+              </button>
+              .
+            </p>
           </div>
 
           <Button
