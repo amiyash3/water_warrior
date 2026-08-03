@@ -39,10 +39,10 @@
 	<string>Water Warrior uses the camera for profile photos and hydration captures.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Water Warrior needs microphone access so the camera can start in the app.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Water Warrior needs photo library access so you can choose a profile picture.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Water Warrior may save photos to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Water Warrior needs photo library access so you can choose a profile picture.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
