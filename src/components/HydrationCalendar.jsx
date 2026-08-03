@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toLocalDateString } from '@/utils/date';
 
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
@@ -21,7 +22,7 @@ export default function HydrationCalendar({ posts, onDayClick }) {
   // Build a map: "YYYY-MM-DD" -> array of posts
   const postsByDay = {};
   posts.forEach(p => {
-    const day = p.created_date?.slice(0, 10);
+    const day = p.created_date ? toLocalDateString(p.created_date) : null;
     if (day) {
       if (!postsByDay[day]) postsByDay[day] = [];
       postsByDay[day].push(p);
@@ -80,7 +81,7 @@ export default function HydrationCalendar({ posts, onDayClick }) {
 
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const dayPosts = postsByDay[dateStr] || [];
-          const isToday = dateStr === today.toISOString().slice(0, 10);
+          const isToday = dateStr === toLocalDateString(today);
           const hasPosts = dayPosts.length > 0;
 
           return (
