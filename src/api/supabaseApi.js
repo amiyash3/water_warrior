@@ -144,7 +144,15 @@ export function createSupabaseApi(supabase) {
         .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        const msg = String(error.message || error);
+        if (/avatar_url/i.test(msg)) {
+          throw new Error(
+            'avatar_url column missing. In Supabase → SQL Editor, run supabase/migrations/20260802120000_profile_avatars.sql'
+          );
+        }
+        throw error;
+      }
       const friends = await loadFriendEmails(session.user.id);
       return mapProfileRow(data, friends);
     },
@@ -442,16 +450,29 @@ export function createSupabaseApi(supabase) {
         const session = await requireSession();
         await ensureProfile(session.user);
 
-        const ext = file.type?.includes('png') ? 'png' : 'jpg';
+        const mime = file.type || 'image/jpeg';
+        const ext = mime.includes('png') ? 'png' : 'jpg';
         const path = `${session.user.id}/${crypto.randomUUID()}.${ext}`;
         const targetBucket = bucket === 'avatars' ? 'avatars' : 'post-photos';
+        const uploadBody =
+          typeof File !== 'undefined' && !(file instanceof File)
+            ? new File([file], `upload.${ext}`, { type: mime })
+            : file;
 
-        const { error: upErr } = await supabase.storage.from(targetBucket).upload(path, file, {
-          contentType: file.type || 'image/jpeg',
+        const { error: upErr } = await supabase.storage.from(targetBucket).upload(path, uploadBody, {
+          contentType: mime,
           upsert: false,
         });
 
-        if (upErr) throw upErr;
+        if (upErr) {
+          const msg = String(upErr.message || upErr.error || upErr);
+          if (/bucket not found|not found/i.test(msg) && targetBucket === 'avatars') {
+            throw new Error(
+              'Avatars storage is missing. In Supabase → SQL Editor, run supabase/migrations/20260802120000_profile_avatars.sql'
+            );
+          }
+          throw new Error(msg || 'Upload failed');
+        }
 
         const {
           data: { publicUrl },

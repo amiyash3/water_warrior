@@ -14,9 +14,11 @@ export default function ProfilePhotoChooser({
   onClear,
   size = 'lg',
   showClear = true,
+  uploading = false,
   className,
 }) {
   const [busy, setBusy] = useState(null);
+  const locked = uploading || !!busy;
 
   const handlePick = async (source) => {
     setBusy(source);
@@ -25,10 +27,11 @@ export default function ProfilePhotoChooser({
       if (result) onChange(result);
     } catch (err) {
       console.error(err);
+      const detail = err?.message ? ` (${err.message})` : '';
       toast.error(
         source === 'camera'
-          ? 'Could not open camera. Check permissions in Settings.'
-          : 'Could not open photo library. Check permissions in Settings.'
+          ? `Could not open camera. On Simulator use Photo library, or test on a real iPhone.${detail}`
+          : `Could not open photo library. Check Settings → Water Warrior → Photos.${detail}`
       );
     } finally {
       setBusy(null);
@@ -47,12 +50,12 @@ export default function ProfilePhotoChooser({
             <User className="w-10 h-10" strokeWidth={1.75} />
           </div>
         )}
-        {busy && (
+        {locked && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <Loader2 className="w-6 h-6 text-white animate-spin" />
           </div>
         )}
-        {showClear && previewUrl && !busy && (
+        {showClear && previewUrl && !locked && (
           <button
             type="button"
             onClick={onClear}
@@ -69,7 +72,7 @@ export default function ProfilePhotoChooser({
           type="button"
           variant="secondary"
           className="flex-1 rounded-full"
-          disabled={!!busy}
+          disabled={locked}
           onClick={() => handlePick('camera')}
         >
           {busy === 'camera' ? (
@@ -83,7 +86,7 @@ export default function ProfilePhotoChooser({
           type="button"
           variant="secondary"
           className="flex-1 rounded-full"
-          disabled={!!busy}
+          disabled={locked}
           onClick={() => handlePick('library')}
         >
           {busy === 'library' ? (

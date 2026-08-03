@@ -4,3 +4,5 @@ ios/App/build/
 .DS_Store
 dist/
 .env
+.env.local
+.env.*.local

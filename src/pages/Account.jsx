@@ -74,18 +74,55 @@ export default function Account() {
     setRemovePhoto(false);
   };
 
-  const handlePhotoChange = ({ blob, previewUrl }) => {
+  const persistAvatar = async (blob) => {
+    setSavingProfile(true);
+    try {
+      let avatarUrl = null;
+      if (blob) {
+        const upload = await api.integrations.Core.UploadFile({
+          file: blob,
+          bucket: 'avatars',
+        });
+        avatarUrl = upload.file_url;
+      }
+      await api.auth.updateMe({ avatar_url: avatarUrl });
+      await checkUserAuth();
+      if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
+      setPhotoBlob(null);
+      setRemovePhoto(false);
+      setPhotoPreview(avatarUrl);
+      toast.success(blob ? 'Profile photo updated' : 'Profile photo removed');
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.message || 'Could not update profile photo');
+      throw err;
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePhotoChange = async ({ blob, previewUrl }) => {
     if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
     setPhotoBlob(blob);
     setPhotoPreview(previewUrl);
     setRemovePhoto(false);
+    try {
+      await persistAvatar(blob);
+    } catch {
+      // Keep local preview so they can retry via Save if needed
+    }
   };
 
-  const clearPhoto = () => {
+  const clearPhoto = async () => {
     if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
     setPhotoBlob(null);
     setPhotoPreview(null);
     setRemovePhoto(true);
+    try {
+      await persistAvatar(null);
+    } catch {
+      // Toast already shown
+    }
   };
 
   const saveProfile = async () => {
@@ -96,6 +133,7 @@ export default function Account() {
         bio: form.bio,
       };
 
+      // Photo usually saves on pick; still flush pending blob / remove if needed
       if (photoBlob) {
         const upload = await api.integrations.Core.UploadFile({
           file: photoBlob,
@@ -197,6 +235,7 @@ export default function Account() {
                 onChange={handlePhotoChange}
                 onClear={clearPhoto}
                 size="xl"
+                uploading={savingProfile}
               />
             </div>
           )}

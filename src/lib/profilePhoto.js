@@ -10,11 +10,6 @@ function base64ToBlob(base64, mimeType = 'image/jpeg') {
   return new Blob([bytes], { type: mimeType });
 }
 
-async function blobFromWebPath(webPath) {
-  const response = await fetch(webPath);
-  return response.blob();
-}
-
 /**
  * Pick a profile photo on iOS (Capacitor Camera) or fall back to a hidden file input on web.
  * @param {'camera' | 'library'} source
@@ -23,26 +18,30 @@ async function blobFromWebPath(webPath) {
 export async function pickProfilePhoto(source) {
   if (Capacitor.isNativePlatform()) {
     try {
+      // Base64 avoids WKWebView fetch() failures on capacitor/file URLs.
+      // allowEditing:false avoids iOS Portrait-mode camera paths that break on
+      // Simulator and some dual-camera devices (FigCapture / -17281).
       const photo = await Camera.getPhoto({
         quality: 85,
-        allowEditing: true,
-        resultType: CameraResultType.Uri,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
         source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
         correctOrientation: true,
         width: 800,
         height: 800,
       });
 
-      if (!photo.webPath) return null;
+      if (!photo.base64String) return null;
 
-      const blob = await blobFromWebPath(photo.webPath);
-      return {
-        blob,
-        previewUrl: photo.webPath,
-      };
+      const mimeType = photo.format === 'png' ? 'image/png' : 'image/jpeg';
+      const blob = base64ToBlob(photo.base64String, mimeType);
+      const previewUrl = URL.createObjectURL(blob);
+      return { blob, previewUrl };
     } catch (err) {
       // User cancelled the system sheet — not an error
-      if (err?.message?.toLowerCase().includes('cancel') || err?.message?.toLowerCase().includes('user')) {
+      const msg = String(err?.message || err || '').toLowerCase();
+      if (msg.includes('cancel') || msg.includes('user') || msg.includes('denied')) {
+        if (msg.includes('denied')) throw err;
         return null;
       }
       throw err;
