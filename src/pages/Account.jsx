@@ -2,26 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
-import { Droplets, Waves, Users, LogOut, Pencil, Check, X, Trash2, Target } from 'lucide-react';
+import { Droplets, Waves, Users, Pencil, Check, X, Target, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import UserAvatar from '@/components/UserAvatar';
 import ProfilePhotoChooser from '@/components/ProfilePhotoChooser';
 import HydrationCalendar from '@/components/HydrationCalendar';
 import MyBottlesManager from '@/components/MyBottlesManager';
 import CustomAmountInput from '@/components/CustomAmountInput';
+import AccountSettings from '@/components/AccountSettings';
 import { Bottle } from '@/components/icons/Bottle';
 import { toast } from 'sonner';
 
@@ -40,6 +30,7 @@ export default function Account() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [savingGoal, setSavingGoal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (!me || postsLoaded) return;
@@ -181,6 +172,19 @@ export default function Account() {
     }
   };
 
+  if (showSettings) {
+    return (
+      <div className="pt-4 pb-10">
+        <AccountSettings
+          me={me}
+          onClose={() => setShowSettings(false)}
+          onDeleteAccount={handleDeleteAccount}
+          deletingAccount={deletingAccount}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="pb-10">
       <div className="relative water-gradient pt-10 pb-20 px-5">
@@ -189,20 +193,30 @@ export default function Account() {
           {!editing ? (
             <>
               <UserAvatar user={me} size="xl" className="ring-4 ring-white/30" />
-              <Button
-                size="sm"
-                variant="secondary"
-                className="rounded-full bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur"
-                onClick={() => {
-                  setEditing(true);
-                  setForm({ username: me.username || '', bio: me.bio || '' });
-                  setPhotoPreview(me.avatar_url || null);
-                  setPhotoBlob(null);
-                  setRemovePhoto(false);
-                }}
-              >
-                <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur"
+                  onClick={() => setShowSettings(true)}
+                >
+                  <Settings className="w-3.5 h-3.5 mr-1.5" /> Settings
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur"
+                  onClick={() => {
+                    setEditing(true);
+                    setForm({ username: me.username || '', bio: me.bio || '' });
+                    setPhotoPreview(me.avatar_url || null);
+                    setPhotoBlob(null);
+                    setRemovePhoto(false);
+                  }}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" /> Edit
+                </Button>
+              </div>
             </>
           ) : (
             <div className="w-full space-y-4">
@@ -261,7 +275,6 @@ export default function Account() {
           ) : (
             <>
               <h2 className="text-2xl font-bold tracking-tight">{me.username || me.full_name}</h2>
-              <p className="text-white/80 text-sm mt-1">{me.email}</p>
               {me.bio && <p className="text-white/90 text-sm mt-3 leading-relaxed max-w-md">{me.bio}</p>}
             </>
           )}
@@ -398,42 +411,14 @@ export default function Account() {
         </div>
       </div>
 
-      <div className="px-5 mt-8 space-y-3">
+      <div className="px-5 mt-8">
         <Button
-          variant="ghost"
-          className="w-full rounded-2xl text-destructive hover:text-destructive hover:bg-destructive/5"
-          onClick={() => api.auth.logout()}
+          variant="secondary"
+          className="w-full rounded-2xl h-12 justify-start"
+          onClick={() => setShowSettings(true)}
         >
-          <LogOut className="w-4 h-4 mr-2" /> Sign out
+          <Settings className="w-4 h-4 mr-2" /> Settings
         </Button>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full rounded-2xl text-muted-foreground hover:text-destructive hover:bg-destructive/5"
-              disabled={deletingAccount}
-            >
-              <Trash2 className="w-4 h-4 mr-2" /> Delete account
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="rounded-3xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete your account and all your hydration posts. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-2xl">Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteAccount}
-                className="rounded-2xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Yes, delete everything
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { getAuthRedirectUrl } from '@/lib/native';
+import { LEGAL_URLS } from '@/components/AccountSettings';
 
 /** signin | signup | forgot | reset */
 function resolveInitialMode(searchParams) {
@@ -27,6 +28,7 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isOver13, setIsOver13] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -82,6 +84,10 @@ export default function Auth() {
       toast.error('You must confirm you are 13 or older to create an account.');
       return;
     }
+    if (!acceptedTerms) {
+      toast.error('You must agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -90,6 +96,7 @@ export default function Auth() {
       toast.success('Account created! You can sign in now.');
       setMode('signin');
       setIsOver13(false);
+      setAcceptedTerms(false);
     } catch (err) {
       toast.error(err.message || 'Sign up failed');
     } finally {
@@ -275,24 +282,60 @@ export default function Auth() {
         </div>
 
         {mode === 'signup' && (
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={isOver13}
-              onChange={(e) => setIsOver13(e.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-primary"
-              required
-            />
-            <span className="text-sm text-muted-foreground leading-snug">
-              I confirm that I am <span className="font-semibold text-foreground">13 years of age or older</span>.
-              Water Warrior is not intended for children under 13.
-            </span>
-          </label>
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isOver13}
+                onChange={(e) => setIsOver13(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-primary"
+                required
+              />
+              <span className="text-sm text-muted-foreground leading-snug">
+                I confirm that I am{' '}
+                <span className="font-semibold text-foreground">13 years of age or older</span>.
+                Water Warrior is not intended for children under 13.
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-primary"
+                required
+              />
+              <span className="text-sm text-muted-foreground leading-snug">
+                I agree to the{' '}
+                <a
+                  href={LEGAL_URLS.termsOfService}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-primary underline underline-offset-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Terms of Service
+                </a>{' '}
+                and{' '}
+                <a
+                  href={LEGAL_URLS.privacyPolicy}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-primary underline underline-offset-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </label>
+          </div>
         )}
 
         <Button
           type="submit"
-          disabled={loading || (mode === 'signup' && !isOver13)}
+          disabled={loading || (mode === 'signup' && (!isOver13 || !acceptedTerms))}
           className="w-full rounded-full h-12 water-gradient border-0 shadow-lg shadow-primary/30"
         >
           {loading ? (
@@ -343,6 +386,7 @@ export default function Auth() {
                 className="text-primary font-semibold"
                 onClick={() => {
                   setIsOver13(false);
+                  setAcceptedTerms(false);
                   setMode('signup');
                 }}
               >
@@ -359,6 +403,7 @@ export default function Auth() {
                 className="text-primary font-semibold"
                 onClick={() => {
                   setIsOver13(false);
+                  setAcceptedTerms(false);
                   setMode('signin');
                 }}
               >

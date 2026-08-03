@@ -1,21 +1,35 @@
 import { useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
-import { ensureHydrationRemindersScheduled } from '@/services/hydrationNotifications';
+import {
+  cancelHydrationReminders,
+  ensureHydrationRemindersScheduled,
+} from '@/services/hydrationNotifications';
+import { getNotificationsEnabled } from '@/lib/notificationPrefs';
 
-export function useHydrationReminders(enabled = true) {
+export function useHydrationReminders(authReady = true) {
   useEffect(() => {
-    if (!enabled) return;
+    if (!authReady) return;
 
-    ensureHydrationRemindersScheduled();
+    const sync = () => {
+      if (getNotificationsEnabled()) {
+        ensureHydrationRemindersScheduled();
+      } else {
+        cancelHydrationReminders().catch(() => {});
+      }
+    };
+
+    sync();
+
+    const onPref = () => sync();
+    window.addEventListener('ww:notifications-changed', onPref);
 
     const listenerPromise = CapacitorApp.addListener('appStateChange', (state) => {
-      if (state.isActive) {
-        ensureHydrationRemindersScheduled();
-      }
+      if (state.isActive) sync();
     });
 
     return () => {
+      window.removeEventListener('ww:notifications-changed', onPref);
       listenerPromise.then((listener) => listener.remove());
     };
-  }, [enabled]);
+  }, [authReady]);
 }

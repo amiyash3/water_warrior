@@ -12,4 +12,5 @@ Water Warrior is a hydration-tracking app that helps users record water intake, 
 
 - [Privacy Policy](privacy-policy/)
 - [Privacy Choices](privacy-choices/)
+- [Terms of Service](terms-of-service/)
 - [Support](support/)
