@@ -22,6 +22,7 @@ import { ensureCameraPermission } from '@/lib/hydrationCapture';
 import { getRandomFact } from '@/data/waterFacts';
 import { openExternalUrl } from '@/lib/openExternalUrl';
 import { LEGAL_URLS } from '@/components/AccountSettings';
+import { toLocalDateString } from '../utils/date';
 
 const BOTTLE_SIZES = [250, 500, 750, 1000];
 const MEDIA_TIMEOUT_MS = 15000;
@@ -428,8 +429,8 @@ export default function Capture() {
       });
 
       const me = await api.auth.me();
-      const today = new Date().toISOString().slice(0, 10);
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const today = toLocalDateString(new Date());
+      const yesterday = toLocalDateString(new Date(Date.now() - 86400000));
       const goalMl = me.daily_goal_ml || 2000;
 
       const todayPosts = await api.entities.WaterPost.filter(
@@ -438,7 +439,7 @@ export default function Capture() {
         200
       );
       const todayMl = todayPosts
-        .filter((p) => p.created_date?.slice(0, 10) === today)
+        .filter((p) => toLocalDateString(p.created_date) === today)
         .reduce((sum, p) => sum + (p.bottle_size_ml || 500), 0);
 
       if (todayMl >= goalMl) {

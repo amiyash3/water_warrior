@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Droplets, TrendingUp, Trophy, Sparkles } from 'lucide-react';
-import { format, startOfWeek, eachDayOfInterval, subMonths, eachMonthOfInterval } from 'date-fns';
+import { format, eachDayOfInterval, subMonths, eachMonthOfInterval } from 'date-fns';
+import { toLocalDateString } from '@/utils/date';
 import {
   getAccountDayCount,
   getTotalMl,
@@ -17,13 +18,14 @@ import { cn } from '@/lib/utils';
 
 function buildWeeklyData(posts) {
   const today = new Date();
-  const start = startOfWeek(today, { weekStartsOn: 1 });
+  const start = new Date(today);
+  start.setDate(start.getDate() - 6);
   const days = eachDayOfInterval({ start, end: today });
   return days.map((day) => {
     const label = format(day, 'EEE');
     const dateStr = format(day, 'yyyy-MM-dd');
     const liters = posts
-      .filter((p) => p.created_date?.slice(0, 10) === dateStr)
+      .filter((p) => toLocalDateString(p.created_date) === dateStr)
       .reduce((sum, p) => sum + (p.bottle_size_ml || 500) / 1000, 0);
     return { label, liters: parseFloat(liters.toFixed(2)) };
   });
@@ -36,7 +38,7 @@ function buildMonthlyData(posts) {
     const label = format(month, 'MMM');
     const monthStr = format(month, 'yyyy-MM');
     const liters = posts
-      .filter((p) => p.created_date?.slice(0, 7) === monthStr)
+      .filter((p) => toLocalDateString(p.created_date).slice(0, 7) === monthStr)
       .reduce((sum, p) => sum + (p.bottle_size_ml || 500) / 1000, 0);
     return { label, liters: parseFloat(liters.toFixed(2)) };
   });
@@ -232,7 +234,7 @@ export default function Analytics() {
         </div>
       )}
 
-      <ChartCard title="This Week" data={weeklyData} color="hsl(var(--primary))" />
+      <ChartCard title="Last 7 Days" data={weeklyData} color="hsl(var(--primary))" />
       <ChartCard title="Last 6 Months" data={monthlyData} color="hsl(var(--accent))" />
     </div>
   );

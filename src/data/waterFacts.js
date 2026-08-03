@@ -42,7 +42,8 @@ export const waterFacts = [
   "Sweat cools you down as it evaporates from your skin, requiring enough internal water reserves to function. — CDC",
   "Cartilage in joints contains about 80% water; staying hydrated keeps joints lubricated. — Arthritis Foundation",
   "When you sweat heavily, you lose essential minerals like sodium and potassium that maintain fluid balance. — NIH",
-  "Our mascot's name is Wally the Water Warrior!"
+  "Our mascot's name is Wally the Water Warrior!",
+  "Co-Founders Alec and Tabitha came up with the idea for Water Warrior on a long drive to Lake Tahoe in 2025!"
 ];
 
 export function getRandomFact() {
