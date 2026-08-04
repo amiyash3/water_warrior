@@ -15,7 +15,7 @@ import Feed from '@/pages/Feed';
 import Capture from '@/pages/Capture';
 import Discover from '@/pages/Discover.jsx';
 import Account from '@/pages/Account.jsx';
-import Analytics from '@/pages/Analytics';
+import Groups from '@/pages/Groups.jsx';
 import Auth from '@/pages/Auth';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useHydrationReminders } from '@/hooks/useHydrationReminders';
@@ -47,7 +47,8 @@ function AnimatedRoutes() {
             <Route path="/capture" element={<Capture />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/account" element={<Account />} />
-            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/groups" element={<Groups />} />
+            <Route path="/analytics" element={<Navigate to="/account" replace />} />
           </Route>
           <Route path="*" element={<PageNotFound />} />
         </Routes>
@@ -109,7 +110,11 @@ function App() {
           </Routes>
         </Router>
         <Toaster />
-        <SonnerToaster position="top-center" />
+        <SonnerToaster
+          position="top-center"
+          offset={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}
+          mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}
+        />
       </QueryClientProvider>
     </AuthProvider>
   );

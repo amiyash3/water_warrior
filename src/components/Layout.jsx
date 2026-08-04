@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Home, Camera, Users, User, BarChart2 } from 'lucide-react';
+import { Home, Camera, Users, User, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api/client';
 import UsernameSetup from './UsernameSetup';
@@ -10,10 +10,9 @@ const navItems = [
   { to: '/', icon: Home, label: 'Feed' },
   { to: '/discover', icon: Users, label: 'Friends' },
   { to: '/capture', icon: Camera, label: 'Capture', primary: true },
-  { to: '/analytics', icon: BarChart2, label: 'Stats' },
+  { to: '/groups', icon: UsersRound, label: 'Groups' },
   { to: '/account', icon: User, label: 'Account' },
 ];
-
 export default function Layout() {
   const location = useLocation();
   const isCapture = location.pathname === '/capture';

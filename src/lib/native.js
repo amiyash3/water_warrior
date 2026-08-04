@@ -5,6 +5,7 @@ import {
   markPasswordRecoveryPending,
   navigateToPasswordReset,
 } from '@/lib/passwordRecovery';
+import { parseGroupInviteFromUrl } from '@/lib/groupInvite';
 
 /** Must match CFBundleURLSchemes in ios/App/App/Info.plist and Supabase redirect URLs. */
 export const NATIVE_AUTH_SCHEME = 'com.waterwarrior.app';
@@ -37,6 +38,17 @@ function parseCallbackUrl(url) {
   return { query: parsed.searchParams, hash };
 }
 
+function navigateToGroupJoin(code) {
+  if (!code || typeof window === 'undefined') return;
+  const next = `/groups?join=${encodeURIComponent(code)}`;
+  if (window.location.pathname.startsWith('/groups')) {
+    window.history.replaceState({}, '', next);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  } else {
+    window.location.assign(next);
+  }
+}
+
 /**
  * Establish a Supabase session from an auth deep-link / redirect URL.
  * @param {string} url
@@ -44,6 +56,13 @@ function parseCallbackUrl(url) {
  */
 export async function handleAuthCallbackUrl(url) {
   if (!supabase || !url?.startsWith(NATIVE_AUTH_SCHEME)) {
+    return { recovery: false };
+  }
+
+  // Group invite deep links (not auth)
+  const inviteCode = parseGroupInviteFromUrl(url);
+  if (inviteCode && url.includes('groups')) {
+    navigateToGroupJoin(inviteCode);
     return { recovery: false };
   }
 
@@ -79,12 +98,18 @@ export async function handleAuthCallbackUrl(url) {
   return { recovery: false };
 }
 
-/** Wire Supabase magic-link / reset-password callbacks into the native app. */
+/** Wire Supabase magic-link / reset-password + group invite deep links. */
 export function setupNativeAuthDeepLinks() {
-  if (!isNativeApp() || !supabase) return undefined;
+  if (!isNativeApp()) return undefined;
 
   const onUrl = (url) => {
     if (!url) return;
+    const inviteCode = parseGroupInviteFromUrl(url);
+    if (inviteCode && url.includes('groups')) {
+      navigateToGroupJoin(inviteCode);
+      return;
+    }
+    if (!supabase) return;
     handleAuthCallbackUrl(url).catch((err) => {
       console.error('Native auth callback failed:', err);
     });
@@ -95,7 +120,6 @@ export function setupNativeAuthDeepLinks() {
     removeListener = () => handle.remove();
   });
 
-  // Cold start: the link that launched the app
   App.getLaunchUrl()
     .then((result) => {
       if (result?.url) onUrl(result.url);

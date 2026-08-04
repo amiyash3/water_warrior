@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
-import { Droplets, Waves, Users, Pencil, Check, X, Target, Settings } from 'lucide-react';
+import { Waves, Users, Pencil, Check, X, Target, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +12,8 @@ import HydrationCalendar from '@/components/HydrationCalendar';
 import MyBottlesManager from '@/components/MyBottlesManager';
 import CustomAmountInput from '@/components/CustomAmountInput';
 import AccountSettings from '@/components/AccountSettings';
+import AccountStatsSummary from '@/components/AccountStatsSummary';
+import AccountStatsDetails from '@/components/AccountStatsDetails';
 import { Bottle } from '@/components/icons/Bottle';
 import { toast } from 'sonner';
 
@@ -20,6 +22,7 @@ const GOAL_OPTIONS = [1000, 1500, 2000, 2500, 3000, 3500, 4000];
 export default function Account() {
   const { user: me, checkUserAuth } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [bottles, setBottles] = useState([]);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ username: '', bio: '' });
   const [photoBlob, setPhotoBlob] = useState(null);
@@ -36,12 +39,17 @@ export default function Account() {
     if (!me || postsLoaded) return;
     setForm({ username: me.username || '', bio: me.bio || '' });
     setPhotoPreview(me.avatar_url || null);
-    api.entities.WaterPost.filter({ created_by: me.email }, '-created_date', 50)
-      .then(setPosts)
+    Promise.all([
+      api.entities.WaterPost.filter({ created_by: me.email }, '-created_date', 500),
+      api.entities.UserBottle.list(),
+    ])
+      .then(([myPosts, myBottles]) => {
+        setPosts(myPosts);
+        setBottles(myBottles);
+      })
       .catch((e) => console.error(e))
       .finally(() => setPostsLoaded(true));
   }, [me]);
-
   if (!me) {
     return (
       <div className="p-5 space-y-4 animate-pulse">
@@ -55,7 +63,7 @@ export default function Account() {
     );
   }
 
-  const totalMl = posts.reduce((sum, p) => sum + (p.bottle_size_ml || 0), 0);
+  const galleryPosts = posts.slice(0, 48);
 
   const resetEditState = () => {
     setEditing(false);
@@ -290,26 +298,18 @@ export default function Account() {
       </div>
 
       <div className="px-5 mt-4">
-        <div className="bg-card rounded-3xl border border-border/50 p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl water-gradient-soft flex items-center justify-center">
-            <Droplets className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total hydrated</p>
-            <p className="text-2xl font-bold tracking-tight">{(totalMl / 1000).toFixed(1)} L</p>
-          </div>
-        </div>
+        <AccountStatsSummary posts={posts} accountCreated={me.created_date} />
       </div>
 
       <div className="px-5 mt-6">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Your hydration moments</h3>
-        {posts.length === 0 ? (
+        {galleryPosts.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-3xl border border-border/50">
             <p className="text-sm text-muted-foreground">No posts yet. Capture your first drink!</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-2">
-            {posts.map((p) => (
+            {galleryPosts.map((p) => (
               <div key={p.id} className="aspect-[3/4] rounded-2xl overflow-hidden relative bg-muted">
                 <img src={p.back_photo_url} alt="" className="w-full h-full object-cover" />
                 <div className="absolute top-1.5 left-1.5 w-10 aspect-[3/4] rounded-lg overflow-hidden border border-white/80">
@@ -409,6 +409,10 @@ export default function Account() {
           </p>
           <p className="text-xs text-muted-foreground mt-3">Your streak increases each day you hit this goal.</p>
         </div>
+      </div>
+
+      <div className="px-5 mt-6">
+        <AccountStatsDetails posts={posts} bottles={bottles} />
       </div>
 
       <div className="px-5 mt-8">
