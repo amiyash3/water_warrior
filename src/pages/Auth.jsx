@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { Droplets, Loader2, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import {
   isPasswordRecoveryPending,
   markPasswordRecoveryPending,
 } from '@/lib/passwordRecovery';
+import WallyLogo from '@/components/WallyLogo';
 
 /** signin | signup | forgot | reset */
 function resolveInitialMode(searchParams) {
@@ -453,9 +454,7 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 mx-auto rounded-3xl water-gradient flex items-center justify-center shadow-xl shadow-primary/30 mb-4">
-            <Droplets className="w-10 h-10 text-white" strokeWidth={2} />
-          </div>
+          <WallyLogo className="w-28 h-28 mx-auto mb-3" />
           <h1 className="text-3xl font-bold tracking-tight">Water Warrior</h1>
           <p className="text-muted-foreground text-sm mt-2">{titles[mode]}</p>
         </div>

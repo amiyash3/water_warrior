@@ -14,8 +14,10 @@ import CustomAmountInput from '@/components/CustomAmountInput';
 import AccountSettings from '@/components/AccountSettings';
 import AccountStatsSummary from '@/components/AccountStatsSummary';
 import AccountStatsDetails from '@/components/AccountStatsDetails';
+import AccountFriendsList from '@/components/AccountFriendsList';
 import { Bottle } from '@/components/icons/Bottle';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const GOAL_OPTIONS = [1000, 1500, 2000, 2500, 3000, 3500, 4000];
 
@@ -34,6 +36,7 @@ export default function Account() {
   const [savingGoal, setSavingGoal] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
 
   useEffect(() => {
     if (!me || postsLoaded) return;
@@ -193,6 +196,14 @@ export default function Account() {
     );
   }
 
+  if (showFriends) {
+    return (
+      <div className="pt-4 pb-10">
+        <AccountFriendsList me={me} onClose={() => setShowFriends(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="pb-10">
       <div className="relative water-gradient pt-10 pb-20 px-5">
@@ -293,7 +304,12 @@ export default function Account() {
         <div className="grid grid-cols-3 gap-3">
           <StatCard icon={Bottle} label="Bottles" value={posts.length} />
           <StatCard icon={Waves} label="Streak" value={`${me.streak_count || 0}d`} />
-          <StatCard icon={Users} label="Friends" value={(me.friends || []).length} />
+          <StatCard
+            icon={Users}
+            label="Friends"
+            value={(me.friends || []).length}
+            onClick={() => setShowFriends(true)}
+          />
         </div>
       </div>
 
@@ -428,12 +444,20 @@ export default function Account() {
   );
 }
 
-function StatCard({ icon: Icon, label, value }) {
+function StatCard({ icon: Icon, label, value, onClick }) {
+  const Comp = onClick ? 'button' : 'div';
   return (
-    <div className="bg-card rounded-3xl border border-border/50 p-4 shadow-sm">
+    <Comp
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={cn(
+        'bg-card rounded-3xl border border-border/50 p-4 shadow-sm text-left w-full',
+        onClick && 'hover:border-primary/40 active:scale-[0.98] transition-all'
+      )}
+    >
       <Icon className="w-5 h-5 text-primary mb-2" />
       <p className="text-2xl font-bold tracking-tight leading-none">{value}</p>
       <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mt-1">{label}</p>
-    </div>
+    </Comp>
   );
 }

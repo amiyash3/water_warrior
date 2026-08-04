@@ -4,7 +4,7 @@ import { Home, Camera, Users, User, UsersRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api/client';
 import UsernameSetup from './UsernameSetup';
-import wallyMascot from '@/assets/wally-mascot.png';
+import WallyLogo from './WallyLogo';
 
 const navItems = [
   { to: '/', icon: Home, label: 'Feed' },
@@ -64,11 +64,7 @@ export default function Layout() {
               scrolled && 'pl-1.5 pr-3 py-1 bg-background/80 backdrop-blur-xl border border-border/40 shadow-sm'
             )}
           >
-            <img
-              src={wallyMascot}
-              alt="Wally the Water Warrior"
-              className="w-10 h-10 rounded-full object-cover bg-white shrink-0"
-            />
+            <WallyLogo className="w-10 h-10 rounded-full shrink-0" />
             <div className={cn(!scrolled && 'pr-1')}>
               <h1 className="text-lg font-bold tracking-tight leading-none">Water Warrior</h1>
               {!scrolled && (
