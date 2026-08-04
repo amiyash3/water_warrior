@@ -19,6 +19,7 @@ import Analytics from '@/pages/Analytics';
 import Auth from '@/pages/Auth';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useHydrationReminders } from '@/hooks/useHydrationReminders';
+import { isPasswordRecoveryPending } from '@/lib/passwordRecovery';
 
 const pageVariants = {
   initial: { opacity: 0, x: 24 },
@@ -81,6 +82,10 @@ if (isLoadingPublicSettings || isLoadingAuth || !minTimeElapsed) {
 
   if (authError?.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
+  }
+
+  if (isSupabaseConfigured && isPasswordRecoveryPending()) {
+    return <Navigate to="/auth?mode=reset" replace />;
   }
 
   if (isSupabaseConfigured && !isAuthenticated) {

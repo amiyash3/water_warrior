@@ -23,8 +23,32 @@ export const AuthProvider = ({ children }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Don't load the main app yet — Auth screen handles the new password.
+        try {
+          sessionStorage.setItem('ww_password_recovery', '1');
+        } catch {
+          // ignore
+        }
+        window.dispatchEvent(new CustomEvent('ww:password-recovery'));
+        if (!window.location.pathname.startsWith('/auth')) {
+          window.location.replace('/auth?mode=reset');
+        }
+        return;
+      }
+
       if (session?.user) {
+        // Skip profile bootstrap while the user is choosing a new password.
+        try {
+          if (sessionStorage.getItem('ww_password_recovery') === '1') {
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            return;
+          }
+        } catch {
+          // ignore
+        }
         checkUserAuth();
       } else {
         setUser(null);
@@ -43,6 +67,20 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
 
       if (isSupabaseConfigured && supabase) {
+        try {
+          if (sessionStorage.getItem('ww_password_recovery') === '1') {
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
+            setIsLoadingPublicSettings(false);
+            if (!window.location.pathname.startsWith('/auth')) {
+              window.location.replace('/auth?mode=reset');
+            }
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
         const {
           data: { session },
         } = await supabase.auth.getSession();

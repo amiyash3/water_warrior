@@ -7,9 +7,15 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { getAuthRedirectUrl } from '@/lib/native';
 import { LEGAL_URLS } from '@/components/AccountSettings';
+import {
+  clearPasswordRecoveryPending,
+  isPasswordRecoveryPending,
+  markPasswordRecoveryPending,
+} from '@/lib/passwordRecovery';
 
 /** signin | signup | forgot | reset */
 function resolveInitialMode(searchParams) {
+  if (isPasswordRecoveryPending()) return 'reset';
   const mode = searchParams.get('mode');
   if (mode === 'reset' || mode === 'recovery') return 'reset';
   if (mode === 'forgot') return 'forgot';
@@ -29,14 +35,44 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [isOver13, setIsOver13] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [recoveryReady, setRecoveryReady] = useState(
+    () => mode === 'reset' && isPasswordRecoveryPending()
+  );
+
+  useEffect(() => {
+    const nextMode = resolveInitialMode(searchParams);
+    if (nextMode === 'reset') {
+      setMode('reset');
+      markPasswordRecoveryPending();
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!supabase) return undefined;
 
+    // Web: tokens may land in the URL hash when opening the reset link in a browser.
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const type = hashParams.get('type') || searchParams.get('type');
-    if (type === 'recovery') {
+    if (type === 'recovery' || searchParams.get('mode') === 'reset') {
       setMode('reset');
+      markPasswordRecoveryPending();
+    }
+
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error }) => {
+          if (error) {
+            toast.error(error.message || 'Could not open reset link');
+            return;
+          }
+          window.history.replaceState({}, '', '/auth?mode=reset');
+          setMode('reset');
+          markPasswordRecoveryPending();
+          setRecoveryReady(true);
+        });
     }
 
     const {
@@ -44,10 +80,29 @@ export default function Auth() {
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setMode('reset');
+        markPasswordRecoveryPending();
+        setRecoveryReady(true);
       }
     });
 
-    return () => subscription.unsubscribe();
+    const onRecoveryEvent = () => {
+      setMode('reset');
+      setRecoveryReady(true);
+    };
+    window.addEventListener('ww:password-recovery', onRecoveryEvent);
+
+    // If we already have a recovery session from a native deep link.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && (isPasswordRecoveryPending() || searchParams.get('mode') === 'reset')) {
+        setMode('reset');
+        setRecoveryReady(true);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('ww:password-recovery', onRecoveryEvent);
+    };
   }, [searchParams]);
 
   const redirectAfterAuth = () => {
@@ -63,7 +118,10 @@ export default function Auth() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
       if (error) throw error;
       redirectAfterAuth();
     } catch (err) {
@@ -91,9 +149,27 @@ export default function Auth() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+      });
       if (error) throw error;
-      toast.success('Account created! You can sign in now.');
+
+      if (data?.user?.identities && data.user.identities.length === 0) {
+        toast.message('An account with this email already exists. Sign in or reset your password.');
+        setMode('signin');
+        return;
+      }
+
+      if (data?.session) {
+        toast.success('Account created!');
+        setIsOver13(false);
+        setAcceptedTerms(false);
+        redirectAfterAuth();
+        return;
+      }
+
+      toast.success('Check your email to confirm your account, then sign in.');
       setMode('signin');
       setIsOver13(false);
       setAcceptedTerms(false);
@@ -114,7 +190,9 @@ export default function Auth() {
     setLoading(true);
     try {
       const redirectTo = getAuthRedirectUrl('/auth?mode=reset');
-      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo,
+      });
       if (error) throw error;
       toast.success('Check your email for a password reset link.');
       setMode('signin');
@@ -143,10 +221,20 @@ export default function Auth() {
 
     setLoading(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error(
+          'Reset link expired or was not opened correctly. Request a new password reset email.'
+        );
+      }
+
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+      clearPasswordRecoveryPending();
       toast.success('Password updated! You are signed in.');
-      window.history.replaceState({}, '', '/auth');
+      window.history.replaceState({}, '', '/');
       redirectAfterAuth();
     } catch (err) {
       toast.error(err.message || 'Could not update password');
@@ -165,7 +253,10 @@ export default function Auth() {
   const renderForm = () => {
     if (mode === 'forgot') {
       return (
-        <form onSubmit={handleForgotPassword} className="space-y-4 bg-card rounded-3xl border border-border/50 p-6 shadow-sm">
+        <form
+          onSubmit={handleForgotPassword}
+          className="space-y-4 bg-card rounded-3xl border border-border/50 p-6 shadow-sm"
+        >
           <p className="text-sm text-muted-foreground">
             Enter your email and we&apos;ll send you a link to reset your password.
           </p>
@@ -193,9 +284,14 @@ export default function Auth() {
 
     if (mode === 'reset') {
       return (
-        <form onSubmit={handleResetPassword} className="space-y-4 bg-card rounded-3xl border border-border/50 p-6 shadow-sm">
+        <form
+          onSubmit={handleResetPassword}
+          className="space-y-4 bg-card rounded-3xl border border-border/50 p-6 shadow-sm"
+        >
           <p className="text-sm text-muted-foreground">
-            Enter your new password below.
+            {recoveryReady
+              ? 'Enter your new password below.'
+              : 'Open the reset link from your email to continue. If you already did, enter a new password below.'}
           </p>
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
@@ -371,7 +467,10 @@ export default function Auth() {
             <button
               type="button"
               className="inline-flex items-center gap-1 text-primary font-semibold"
-              onClick={() => setMode('signin')}
+              onClick={() => {
+                clearPasswordRecoveryPending();
+                setMode('signin');
+              }}
             >
               <ArrowLeft className="w-4 h-4" />
               Back to sign in
