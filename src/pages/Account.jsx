@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/api/client';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
-import { Waves, Users, Pencil, Check, X, Target, Settings } from 'lucide-react';
+import { Waves, Users, Pencil, Check, X, Target, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,10 @@ import AccountSettings from '@/components/AccountSettings';
 import AccountStatsSummary from '@/components/AccountStatsSummary';
 import AccountStatsDetails from '@/components/AccountStatsDetails';
 import AccountFriendsList from '@/components/AccountFriendsList';
+import {
+  HydrationMomentThumb,
+  HydrationMomentViewer,
+} from '@/components/HydrationMomentMedia';
 import { Bottle } from '@/components/icons/Bottle';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -37,6 +41,8 @@ export default function Account() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [showAllMoments, setShowAllMoments] = useState(false);
+  const [viewingPost, setViewingPost] = useState(null);
 
   useEffect(() => {
     if (!me || postsLoaded) return;
@@ -66,7 +72,8 @@ export default function Account() {
     );
   }
 
-  const galleryPosts = posts.slice(0, 48);
+  const galleryPosts = posts.slice(0, 6);
+  const hasMoreMoments = posts.length > 6;
 
   const resetEditState = () => {
     setEditing(false);
@@ -204,6 +211,40 @@ export default function Account() {
     );
   }
 
+  if (showAllMoments) {
+    return (
+      <div className="pt-4 pb-10 px-5 space-y-5">
+        <button
+          type="button"
+          onClick={() => setShowAllMoments(false)}
+          className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="w-4 h-4" /> Account
+        </button>
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Hydration moments</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            {posts.length} post{posts.length !== 1 ? 's' : ''} all time
+          </p>
+        </div>
+        {posts.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-3xl border border-border/50">
+            <p className="text-sm text-muted-foreground">No posts yet. Capture your first drink!</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {posts.map((p) => (
+              <HydrationMomentThumb key={p.id} post={p} onClick={setViewingPost} />
+            ))}
+          </div>
+        )}
+        {viewingPost && (
+          <HydrationMomentViewer post={viewingPost} onClose={() => setViewingPost(null)} />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="pb-10">
       <div className="relative water-gradient pt-10 pb-20 px-5">
@@ -318,22 +359,45 @@ export default function Account() {
       </div>
 
       <div className="px-5 mt-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Your hydration moments</h3>
+        <button
+          type="button"
+          onClick={() => posts.length > 0 && setShowAllMoments(true)}
+          className={cn(
+            'w-full flex items-center justify-between gap-2 mb-3 text-left',
+            posts.length > 0 && 'active:opacity-80'
+          )}
+        >
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Your hydration moments
+          </h3>
+          {posts.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-primary">
+              See all
+              <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          )}
+        </button>
         {galleryPosts.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-3xl border border-border/50">
             <p className="text-sm text-muted-foreground">No posts yet. Capture your first drink!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {galleryPosts.map((p) => (
-              <div key={p.id} className="aspect-[3/4] rounded-2xl overflow-hidden relative bg-muted">
-                <img src={p.back_photo_url} alt="" className="w-full h-full object-cover" />
-                <div className="absolute top-1.5 left-1.5 w-10 aspect-[3/4] rounded-lg overflow-hidden border border-white/80">
-                  <img src={p.front_photo_url} alt="" className="w-full h-full object-cover" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              {galleryPosts.map((p) => (
+                <HydrationMomentThumb key={p.id} post={p} onClick={setViewingPost} />
+              ))}
+            </div>
+            {hasMoreMoments && (
+              <Button
+                variant="secondary"
+                className="w-full mt-3 rounded-2xl"
+                onClick={() => setShowAllMoments(true)}
+              >
+                See all {posts.length} moments
+              </Button>
+            )}
+          </>
         )}
       </div>
 
@@ -348,10 +412,13 @@ export default function Account() {
 
       {selectedDay && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 backdrop-blur-sm"
           onClick={() => setSelectedDay(null)}
         >
-          <div className="bg-card w-full max-w-2xl rounded-t-3xl p-5 pb-10" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="bg-card w-full max-w-2xl rounded-t-3xl p-5 pb-[max(6.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] max-h-[85dvh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4" />
             <h3 className="font-semibold text-base mb-1">
               {new Date(selectedDay.date + 'T12:00:00').toLocaleDateString('default', {
@@ -366,16 +433,15 @@ export default function Account() {
             </p>
             <div className="grid grid-cols-3 gap-2">
               {selectedDay.posts.map((p) => (
-                <div key={p.id} className="aspect-[3/4] rounded-2xl overflow-hidden relative bg-muted">
-                  <img src={p.back_photo_url} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute top-1.5 left-1.5 w-10 aspect-[3/4] rounded-lg overflow-hidden border border-white/80">
-                    <img src={p.front_photo_url} alt="" className="w-full h-full object-cover" />
-                  </div>
-                </div>
+                <HydrationMomentThumb key={p.id} post={p} onClick={setViewingPost} />
               ))}
             </div>
           </div>
         </div>
+      )}
+
+      {viewingPost && !showAllMoments && (
+        <HydrationMomentViewer post={viewingPost} onClose={() => setViewingPost(null)} />
       )}
 
       <div className="px-5 mt-6">
