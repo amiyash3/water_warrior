@@ -1,7 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { publishSocialContent, GUIDELINES_MESSAGE } from '@/services/moderation';
 
-export async function getComments(postId) {
+/**
+ * Load comments for a post with like counts + whether the current user liked each.
+ * @param {string} postId
+ * @param {string | null | undefined} currentUserId
+ */
+export async function getComments(postId, currentUserId) {
   const { data, error } = await supabase
     .from('water_post_comments')
     .select('*, profiles(username, full_name, email)')
@@ -9,27 +14,57 @@ export async function getComments(postId) {
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return data;
+  const comments = data ?? [];
+  if (comments.length === 0) return [];
+
+  const ids = comments.map((c) => c.id);
+  const { data: likes, error: likesErr } = await supabase
+    .from('water_comment_likes')
+    .select('comment_id, user_id')
+    .in('comment_id', ids);
+
+  if (likesErr) throw likesErr;
+
+  const countByComment = {};
+  const likedByMe = new Set();
+  (likes ?? []).forEach((row) => {
+    countByComment[row.comment_id] = (countByComment[row.comment_id] || 0) + 1;
+    if (currentUserId && row.user_id === currentUserId) {
+      likedByMe.add(row.comment_id);
+    }
+  });
+
+  return comments.map((c) => ({
+    ...c,
+    like_count: countByComment[c.id] || 0,
+    liked_by_me: likedByMe.has(c.id),
+  }));
 }
 
 /**
- * Create a comment via the trusted publish Edge Function.
- * Author is derived server-side from the session — do not pass userId.
- * @param {{ postId: string, content: string }} params
+ * Create a comment (or reply) via the trusted publish Edge Function.
+ * @param {{ postId: string, content: string, parentId?: string | null }} params
  */
-export async function addComment({ postId, content }) {
-  const data = await publishSocialContent({
+export async function addComment({ postId, content, parentId = null }) {
+  const payload = {
     type: 'comment',
     post_id: postId,
     content,
-  });
+  };
+  if (parentId) payload.parent_id = parentId;
+
+  const data = await publishSocialContent(payload);
 
   if (!data?.comment) {
     throw Object.assign(new Error(data?.message || GUIDELINES_MESSAGE), {
       code: data?.code,
     });
   }
-  return data.comment;
+  return {
+    ...data.comment,
+    like_count: 0,
+    liked_by_me: false,
+  };
 }
 
 export async function deleteComment(commentId) {
@@ -39,4 +74,45 @@ export async function deleteComment(commentId) {
     .eq('id', commentId);
 
   if (error) throw error;
+}
+
+/** @param {string} commentId */
+export async function likeComment(commentId) {
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser();
+  if (authErr || !user) throw new Error('You must be signed in.');
+
+  const { error } = await supabase.from('water_comment_likes').insert({
+    comment_id: commentId,
+    user_id: user.id,
+  });
+  if (error && error.code !== '23505') throw error; // ignore duplicate
+}
+
+/** @param {string} commentId */
+export async function unlikeComment(commentId) {
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser();
+  if (authErr || !user) throw new Error('You must be signed in.');
+
+  const { error } = await supabase
+    .from('water_comment_likes')
+    .delete()
+    .eq('comment_id', commentId)
+    .eq('user_id', user.id);
+
+  if (error) throw error;
+}
+
+export async function toggleCommentLike(commentId, currentlyLiked) {
+  if (currentlyLiked) {
+    await unlikeComment(commentId);
+    return false;
+  }
+  await likeComment(commentId);
+  return true;
 }

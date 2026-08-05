@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Flag, Ban } from 'lucide-react';
+import { MoreHorizontal, Flag, Ban, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,13 +21,14 @@ import { blockUser } from '@/services/moderation';
 import { toast } from 'sonner';
 
 /**
- * Three-dot menu for reporting / blocking other users' content or profiles.
+ * Three-dot menu for reporting / blocking others, or deleting your own content.
  * @param {{
  *   targetType: 'post' | 'comment' | 'profile',
  *   targetId: string,
  *   reportedUserId: string,
  *   isOwn: boolean,
  *   onBlocked?: () => void,
+ *   onDelete?: () => void | Promise<void>,
  *   className?: string,
  * }} props
  */
@@ -37,15 +38,22 @@ export default function ContentActionsMenu({
   reportedUserId,
   isOwn,
   onBlocked,
+  onDelete,
   className,
 }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  if (isOwn || !reportedUserId || !targetId) return null;
+  const showOwnDelete = Boolean(isOwn && onDelete);
+  const showModeration = Boolean(!isOwn && reportedUserId && targetId);
+
+  if (!showOwnDelete && !showModeration) return null;
 
   const reportLabel = targetType === 'profile' ? 'Report profile' : 'Report';
+  const deleteLabel = targetType === 'post' ? 'Delete post' : 'Delete comment';
 
   const confirmBlock = async () => {
     if (blocking) return;
@@ -59,6 +67,19 @@ export default function ContentActionsMenu({
       toast.error(err?.message || 'Could not block user.');
     } finally {
       setBlocking(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (deleting || !onDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+      setDeleteOpen(false);
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -78,56 +99,105 @@ export default function ContentActionsMenu({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="rounded-2xl">
-          <DropdownMenuItem
-            className="gap-2 cursor-pointer"
-            onSelect={() => setReportOpen(true)}
-          >
-            <Flag className="w-4 h-4" />
-            {reportLabel}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2 cursor-pointer text-destructive focus:text-destructive"
-            onSelect={() => setBlockOpen(true)}
-          >
-            <Ban className="w-4 h-4" />
-            Block user
-          </DropdownMenuItem>
+          {showModeration && (
+            <>
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onSelect={() => setReportOpen(true)}
+              >
+                <Flag className="w-4 h-4" />
+                {reportLabel}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                onSelect={() => setBlockOpen(true)}
+              >
+                <Ban className="w-4 h-4" />
+                Block user
+              </DropdownMenuItem>
+            </>
+          )}
+          {showOwnDelete && (
+            <DropdownMenuItem
+              className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              onSelect={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+              {deleteLabel}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ReportModal
-        open={reportOpen}
-        onOpenChange={setReportOpen}
-        targetType={targetType}
-        targetId={targetId}
-        reportedUserId={reportedUserId}
-      />
+      {showModeration && (
+        <>
+          <ReportModal
+            open={reportOpen}
+            onOpenChange={setReportOpen}
+            targetType={targetType}
+            targetId={targetId}
+            reportedUserId={reportedUserId}
+          />
 
-      <AlertDialog open={blockOpen} onOpenChange={setBlockOpen}>
-        <AlertDialogContent className="rounded-3xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Block this user?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Blocking this user will hide your profiles, posts, comments, and social activity from each other.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-2xl" disabled={blocking}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="rounded-2xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={blocking}
-              onClick={(e) => {
-                e.preventDefault();
-                confirmBlock();
-              }}
-            >
-              Block
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          <AlertDialog open={blockOpen} onOpenChange={setBlockOpen}>
+            <AlertDialogContent className="rounded-3xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Block this user?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Blocking this user will hide your profiles, posts, comments, and social activity from each other.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="rounded-2xl" disabled={blocking}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="rounded-2xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={blocking}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    confirmBlock();
+                  }}
+                >
+                  Block
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
+
+      {showOwnDelete && (
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent className="rounded-3xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {targetType === 'post' ? 'Delete this post?' : 'Delete this comment?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {targetType === 'post'
+                  ? 'This removes the post and its comments from the feed. This can’t be undone.'
+                  : 'This removes the comment permanently.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-2xl" disabled={deleting}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-2xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleting}
+                onClick={(e) => {
+                  e.preventDefault();
+                  confirmDelete();
+                }}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }

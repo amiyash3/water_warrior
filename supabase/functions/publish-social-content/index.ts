@@ -120,6 +120,7 @@ type PublishBody = {
   bottle_id?: string | null;
   post_id?: string;
   content?: string;
+  parent_id?: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -178,6 +179,7 @@ async function publishComment(
 ) {
   const postId = body.post_id;
   const content = String(body.content ?? "").trim();
+  const parentId = body.parent_id ? String(body.parent_id).trim() : null;
 
   if (!postId) {
     return json({ ok: false, message: "post_id is required" }, 400);
@@ -214,6 +216,24 @@ async function publishComment(
     return json({ ok: false, message: "Cannot comment on this post" }, 403);
   }
 
+  let resolvedParentId: string | null = null;
+  if (parentId) {
+    const { data: parent, error: parentErr } = await admin
+      .from("water_post_comments")
+      .select("id, post_id, parent_id, user_id, moderation_status")
+      .eq("id", parentId)
+      .maybeSingle();
+
+    if (parentErr || !parent || parent.post_id !== postId) {
+      return json({ ok: false, message: "Reply target not found" }, 404);
+    }
+    if (parent.moderation_status !== "visible" && parent.user_id !== user.id) {
+      return json({ ok: false, message: "Cannot reply to this comment" }, 403);
+    }
+    // One level of nesting: replies to a reply attach to the top-level parent
+    resolvedParentId = parent.parent_id ?? parent.id;
+  }
+
   const { data: blocked } = await admin
     .from("user_blocks")
     .select("blocker_id")
@@ -239,6 +259,7 @@ async function publishComment(
       user_id: user.id,
       author_email: profile?.email ?? user.email ?? "",
       content,
+      parent_id: resolvedParentId,
       moderation_status: "visible",
     })
     .select("*, profiles(username, full_name, email)")

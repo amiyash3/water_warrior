@@ -196,6 +196,9 @@ export default function Capture() {
   const [caption, setCaption] = useState('');
   const [location, setLocation] = useState('');
   const [bottleSize, setBottleSize] = useState(500);
+  const [bottlesDrank, setBottlesDrank] = useState(1);
+  const [customBottlesOpen, setCustomBottlesOpen] = useState(false);
+  const [customBottlesInput, setCustomBottlesInput] = useState('');
   const [bottles, setBottles] = useState([]);
   const [selectedBottleId, setSelectedBottleId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -298,7 +301,7 @@ export default function Capture() {
       mountedRef.current = false;
       stopStreams();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleBottleSelect = (bottleId) => {
     setSelectedBottleId(bottleId);
@@ -424,7 +427,7 @@ export default function Capture() {
         back_photo_url: backUpload.file_url,
         caption,
         location,
-        bottle_size_ml: bottleSize,
+        bottle_size_ml: bottleSize * Math.max(1, bottlesDrank),
         bottle_id: selectedBottleId && selectedBottleId !== OTHER_BOTTLE_ID ? selectedBottleId : null,
       });
 
@@ -653,7 +656,86 @@ export default function Capture() {
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
-                Caption
+                Bottles drank
+              </label>
+              <p className="text-xs text-muted-foreground mb-2">
+                How many since your last post? Default is 1.
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => {
+                      setBottlesDrank(n);
+                      setCustomBottlesOpen(false);
+                      setCustomBottlesInput('');
+                    }}
+                    className={cn(
+                      'py-3 rounded-2xl text-sm font-semibold transition-all border',
+                      bottlesDrank === n && !customBottlesOpen
+                        ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+                        : 'bg-background border-border hover:border-primary/40'
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomBottlesOpen(true);
+                    setCustomBottlesInput(bottlesDrank > 3 ? String(bottlesDrank) : '');
+                  }}
+                  className={cn(
+                    'py-3 rounded-2xl text-sm font-semibold transition-all border',
+                    customBottlesOpen || bottlesDrank > 3
+                      ? 'water-gradient text-white border-transparent shadow-md shadow-primary/20'
+                      : 'bg-background border-border hover:border-primary/40'
+                  )}
+                >
+                  {bottlesDrank > 3 ? bottlesDrank : 'Custom'}
+                </button>
+              </div>
+              {customBottlesOpen && (
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="99"
+                    placeholder="e.g. 5"
+                    value={customBottlesInput}
+                    onChange={(e) => setCustomBottlesInput(e.target.value)}
+                    className="rounded-2xl border-border"
+                  />
+                  <Button
+                    type="button"
+                    className="rounded-2xl shrink-0"
+                    onClick={() => {
+                      const n = parseInt(customBottlesInput, 10);
+                      if (!n || n < 1) {
+                        toast.error('Enter at least 1 bottle');
+                        return;
+                      }
+                      setBottlesDrank(Math.min(99, n));
+                      setCustomBottlesOpen(false);
+                    }}
+                  >
+                    Set
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                Total logged: {(bottleSize * Math.max(1, bottlesDrank)).toLocaleString()} ml ·{' '}
+                {Math.round((bottleSize * Math.max(1, bottlesDrank)) / 29.574)} oz
+                {bottlesDrank > 1 ? ` (${bottlesDrank} × ${bottleSize} ml)` : ''}
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+                Caption (optional)
               </label>
               <Textarea
                 placeholder="How's the hydration going?"

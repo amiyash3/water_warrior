@@ -239,7 +239,14 @@ export default function Account() {
           </div>
         )}
         {viewingPost && (
-          <HydrationMomentViewer post={viewingPost} onClose={() => setViewingPost(null)} />
+          <HydrationMomentViewer
+            post={viewingPost}
+            onClose={() => setViewingPost(null)}
+            onDeleted={(id) => {
+              setPosts((prev) => prev.filter((p) => p.id !== id));
+              setViewingPost(null);
+            }}
+          />
         )}
       </div>
     );
@@ -441,7 +448,14 @@ export default function Account() {
       )}
 
       {viewingPost && !showAllMoments && (
-        <HydrationMomentViewer post={viewingPost} onClose={() => setViewingPost(null)} />
+        <HydrationMomentViewer
+          post={viewingPost}
+          onClose={() => setViewingPost(null)}
+          onDeleted={(id) => {
+            setPosts((prev) => prev.filter((p) => p.id !== id));
+            setViewingPost(null);
+          }}
+        />
       )}
 
       <div className="px-5 mt-6">

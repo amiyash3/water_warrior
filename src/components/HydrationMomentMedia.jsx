@@ -1,6 +1,18 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/api/client';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /** Thumbnail with back photo + front inset. */
 export function HydrationMomentThumb({ post, onClick, className }) {
@@ -25,7 +37,10 @@ export function HydrationMomentThumb({ post, onClick, className }) {
 }
 
 /** Full-screen expanded view of a hydration moment. */
-export function HydrationMomentViewer({ post, onClose }) {
+export function HydrationMomentViewer({ post, onClose, onDeleted }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   if (!post) return null;
 
   const ml = post.bottle_size_ml || 500;
@@ -39,49 +54,105 @@ export function HydrationMomentViewer({ post, onClose }) {
       })
     : null;
 
+  const handleDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await api.entities.WaterPost.delete(post.id);
+      toast.success('Post deleted');
+      setConfirmOpen(false);
+      onDeleted?.(post.id);
+      onClose?.();
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete post');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Hydration moment"
-    >
+    <>
       <div
-        className="flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 text-white"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur-sm"
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Hydration moment"
       >
-        <div className="min-w-0">
-          <p className="font-semibold text-sm truncate">{when || 'Hydration moment'}</p>
-          <p className="text-xs text-white/70">{ml} ml</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0"
-          aria-label="Close"
+        <div
+          className="flex items-center justify-between gap-2 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 text-white"
+          onClick={(e) => e.stopPropagation()}
         >
-          <X className="w-5 h-5" />
-        </button>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{when || 'Hydration moment'}</p>
+            <p className="text-xs text-white/70">{ml} ml</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {onDeleted && (
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center"
+                aria-label="Delete post"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="flex-1 flex items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] min-h-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="relative w-full max-w-md max-h-full aspect-[3/4] rounded-3xl overflow-hidden bg-muted shadow-2xl">
+            <img
+              src={post.back_photo_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            {post.front_photo_url && (
+              <div className="absolute top-3 left-3 w-20 aspect-[3/4] rounded-xl overflow-hidden border-2 border-white/90 shadow-lg">
+                <img src={post.front_photo_url} alt="" className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div
-        className="flex-1 flex items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] min-h-0"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="relative w-full max-w-md max-h-full aspect-[3/4] rounded-3xl overflow-hidden bg-muted shadow-2xl">
-          <img
-            src={post.back_photo_url}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          {post.front_photo_url && (
-            <div className="absolute top-3 left-3 w-20 aspect-[3/4] rounded-xl overflow-hidden border-2 border-white/90 shadow-lg">
-              <img src={post.front_photo_url} alt="" className="w-full h-full object-cover" />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="rounded-3xl z-[80]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the post and its comments. This can’t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-2xl" disabled={deleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-2xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -166,6 +166,9 @@ export default function Feed() {
             onAuthorBlocked={() =>
               setPosts((prev) => prev.filter((p) => p.user_id !== post.user_id))
             }
+            onPostDeleted={(id) =>
+              setPosts((prev) => prev.filter((p) => p.id !== id))
+            }
           />
         ))}
       </div>

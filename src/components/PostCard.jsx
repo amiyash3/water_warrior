@@ -6,8 +6,10 @@ import DualPhotoView from './DualPhotoView';
 import CommentSection from './CommentSection';
 import ContentActionsMenu from './ContentActionsMenu';
 import { useAuth } from '@/lib/AuthContext';
+import { api } from '@/api/client';
+import { toast } from 'sonner';
 
-export default function PostCard({ post, author, onAuthorBlocked }) {
+export default function PostCard({ post, author, onAuthorBlocked, onPostDeleted }) {
   const { user } = useAuth();
   const userProfile = author || { email: post.created_by, username: post.created_by?.split('@')[0] };
   const authorId = post.user_id || author?.id;
@@ -15,6 +17,17 @@ export default function PostCard({ post, author, onAuthorBlocked }) {
   const timeAgo = post.created_date
     ? formatDistanceToNow(new Date(post.created_date), { addSuffix: true })
     : '';
+
+  const handleDeletePost = async () => {
+    try {
+      await api.entities.WaterPost.delete(post.id);
+      toast.success('Post deleted');
+      onPostDeleted?.(post.id);
+    } catch (err) {
+      toast.error(err?.message || 'Could not delete post');
+      throw err;
+    }
+  };
 
   return (
     <article className="bg-card rounded-3xl overflow-hidden border border-border/50 shadow-sm hover:shadow-lg hover:shadow-primary/5 transition-all">
@@ -39,6 +52,7 @@ export default function PostCard({ post, author, onAuthorBlocked }) {
           reportedUserId={authorId}
           isOwn={isOwn}
           onBlocked={onAuthorBlocked}
+          onDelete={isOwn ? handleDeletePost : undefined}
         />
       </header>
       <div className="px-4">
@@ -57,7 +71,7 @@ export default function PostCard({ post, author, onAuthorBlocked }) {
           )}
         </div>
       )}
-      <CommentSection postId={post.id} />
+      <CommentSection postId={post.id} postAuthorId={authorId} />
     </article>
   );
 }
