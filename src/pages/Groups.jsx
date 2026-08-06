@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  UsersRound,
+  Trophy,
   Plus,
   LogIn,
   ChevronLeft,
@@ -9,7 +9,7 @@ import {
   RefreshCw,
   LogOut,
   Trash2,
-  Flame,
+  Waves,
   Droplets,
   Share2,
   Settings,
@@ -197,7 +197,7 @@ export default function Groups() {
 
       {groups.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-3xl border border-border/50">
-          <UsersRound className="w-10 h-10 text-primary mx-auto mb-3" />
+          <Trophy className="w-10 h-10 text-primary mx-auto mb-3" />
           <p className="font-semibold">No groups yet</p>
           <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
             Create a group and share an invite, or join with a code.
@@ -480,7 +480,7 @@ function GroupDetail({ groupId, me, onBack, onLeft }) {
         <div className="flex p-1 rounded-2xl bg-muted/60">
           {[
             { id: 'water', label: 'Water', icon: Droplets },
-            { id: 'streak', label: 'Streak', icon: Flame },
+            { id: 'streak', label: 'Streak', icon: Waves },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -636,7 +636,7 @@ function GroupDetail({ groupId, me, onBack, onLeft }) {
                     </div>
                     <div className="rounded-2xl bg-black/15 px-4 py-3">
                       <div className="flex items-center gap-1.5 text-white/70 text-[10px] font-semibold uppercase tracking-wider">
-                        <Flame className="w-3.5 h-3.5" /> Streak
+                        <Waves className="w-3.5 h-3.5" /> Streak
                       </div>
                       <p className="text-xl font-bold mt-1 tabular-nums">{row.streak_count || 0}d</p>
                     </div>

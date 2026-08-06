@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api/client';
 import { toast } from 'sonner';
+import PinchZoomStage from '@/components/PinchZoomStage';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,22 +42,44 @@ export function HydrationMomentThumb({ post, onClick, className }) {
 export function HydrationMomentViewer({ post, onClose, onDeleted }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [swapped, setSwapped] = useState(false);
 
-  if (!post) return null;
+  useEffect(() => {
+    if (!post) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
 
-  const ml = post.bottle_size_ml || 500;
-  const when = post.created_date
-    ? new Date(post.created_date).toLocaleString('default', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
-    : null;
+    const preventBehindScroll = (e) => {
+      if (
+        e.target?.closest?.(
+          '[data-moment-viewer], [role="alertdialog"], [data-radix-alert-dialog-content]'
+        )
+      ) {
+        return;
+      }
+      e.preventDefault();
+    };
+    document.addEventListener('touchmove', preventBehindScroll, { passive: false });
+    document.addEventListener('wheel', preventBehindScroll, { passive: false });
 
-  const handleDelete = async () => {
-    if (deleting) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.removeEventListener('touchmove', preventBehindScroll);
+      document.removeEventListener('wheel', preventBehindScroll);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [post, onClose]);
+
+  const handleDelete = useCallback(async () => {
+    if (deleting || !post) return;
     setDeleting(true);
     try {
       await api.entities.WaterPost.delete(post.id);
@@ -68,19 +92,36 @@ export function HydrationMomentViewer({ post, onClose, onDeleted }) {
     } finally {
       setDeleting(false);
     }
-  };
+  }, [deleting, post, onDeleted, onClose]);
 
-  return (
+  if (!post || typeof document === 'undefined') return null;
+
+  const ml = post.bottle_size_ml || 500;
+  const when = post.created_date
+    ? new Date(post.created_date).toLocaleString('default', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null;
+
+  const mainUrl = swapped ? post.front_photo_url : post.back_photo_url;
+  const insetUrl = swapped ? post.back_photo_url : post.front_photo_url;
+
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur-sm"
-        onClick={onClose}
+        data-moment-viewer
+        className="fixed inset-0 z-[100] flex flex-col bg-black/90 backdrop-blur-sm overscroll-none touch-none"
         role="dialog"
         aria-modal="true"
         aria-label="Hydration moment"
+        onClick={onClose}
       >
         <div
-          className="flex items-center justify-between gap-2 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 text-white"
+          className="flex items-center justify-between gap-2 px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 text-white shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="min-w-0">
@@ -113,23 +154,35 @@ export function HydrationMomentViewer({ post, onClose, onDeleted }) {
           className="flex-1 flex items-center justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] min-h-0"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="relative w-full max-w-md max-h-full aspect-[3/4] rounded-3xl overflow-hidden bg-muted shadow-2xl">
-            <img
-              src={post.back_photo_url}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-            {post.front_photo_url && (
-              <div className="absolute top-3 left-3 w-20 aspect-[3/4] rounded-xl overflow-hidden border-2 border-white/90 shadow-lg">
-                <img src={post.front_photo_url} alt="" className="w-full h-full object-cover" />
-              </div>
+          <div className="relative w-full max-w-md max-h-full aspect-[3/4] rounded-3xl overflow-hidden bg-black shadow-2xl">
+            <PinchZoomStage>
+              <img
+                src={mainUrl}
+                alt=""
+                draggable={false}
+                className="w-full h-full object-cover"
+              />
+            </PinchZoomStage>
+
+            {insetUrl && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSwapped((v) => !v);
+                }}
+                className="absolute top-3 left-3 w-20 aspect-[3/4] rounded-xl overflow-hidden border-2 border-white/90 shadow-lg z-20"
+                aria-label="Swap photos"
+              >
+                <img src={insetUrl} alt="" className="w-full h-full object-cover" draggable={false} />
+              </button>
             )}
           </div>
         </div>
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="rounded-3xl z-[80]">
+        <AlertDialogContent className="rounded-3xl z-[110]">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this post?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -153,6 +206,7 @@ export function HydrationMomentViewer({ post, onClose, onDeleted }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </>,
+    document.body
   );
 }

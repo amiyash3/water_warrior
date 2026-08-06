@@ -15,6 +15,7 @@ const PROHIBITED_TERMS = [
   "child porn",
   "csam",
   "rape you",
+  "retard",
 ];
 
 const SPAM_PATTERNS = [
@@ -252,25 +253,58 @@ async function publishComment(
     .eq("id", user.id)
     .maybeSingle();
 
+  const authorEmail = profile?.email ?? user.email ?? "";
+  const row: Record<string, unknown> = {
+    post_id: postId,
+    user_id: user.id,
+    author_email: authorEmail,
+    content,
+    moderation_status: "visible",
+  };
+  // Only set when replying — omit for top-level so deploys work before parent_id migration
+  if (resolvedParentId) {
+    row.parent_id = resolvedParentId;
+  }
+
+  // Do not embed profiles here: parent_id self-FK makes PostgREST embeds ambiguous
+  // and the whole insert().select() fails with a generic error.
   const { data: inserted, error } = await admin
     .from("water_post_comments")
-    .insert({
-      post_id: postId,
-      user_id: user.id,
-      author_email: profile?.email ?? user.email ?? "",
-      content,
-      parent_id: resolvedParentId,
-      moderation_status: "visible",
-    })
-    .select("*, profiles(username, full_name, email)")
+    .insert(row)
+    .select("*")
     .single();
 
   if (error) {
-    console.error("comment insert failed", error.code);
-    return json({ ok: false, message: "Could not save comment" }, 500);
+    console.error("comment insert failed", error.code, error.message, error.details, error.hint);
+    return json(
+      {
+        ok: false,
+        message: "Could not save comment",
+        detail: error.message,
+        code: error.code,
+        hint: error.hint,
+      },
+      500,
+    );
   }
 
-  return json({ ok: true, comment: inserted });
+  const { data: authorProfile } = await admin
+    .from("profiles")
+    .select("username, full_name, email")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return json({
+    ok: true,
+    comment: {
+      ...inserted,
+      profiles: authorProfile ?? {
+        username: null,
+        full_name: null,
+        email: authorEmail,
+      },
+    },
+  });
 }
 
 async function publishPost(

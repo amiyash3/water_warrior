@@ -3,18 +3,48 @@ import { publishSocialContent, GUIDELINES_MESSAGE } from '@/services/moderation'
 
 /**
  * Load comments for a post with like counts + whether the current user liked each.
+ * Avoids ambiguous PostgREST embeds after parent_id self-FK was added.
  * @param {string} postId
  * @param {string | null | undefined} currentUserId
  */
 export async function getComments(postId, currentUserId) {
   const { data, error } = await supabase
     .from('water_post_comments')
-    .select('*, profiles(username, full_name, email)')
+    .select('*')
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
   const comments = data ?? [];
+  if (comments.length === 0) return [];
+
+  const userIds = [...new Set(comments.map((c) => c.user_id).filter(Boolean))];
+  let profilesById = {};
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, full_name, email')
+      .in('id', userIds);
+    (profiles ?? []).forEach((p) => {
+      profilesById[p.id] = p;
+    });
+  }
+
+  const withProfiles = comments.map((c) => ({
+    ...c,
+    profiles: profilesById[c.user_id]
+      ? {
+          username: profilesById[c.user_id].username,
+          full_name: profilesById[c.user_id].full_name,
+          email: profilesById[c.user_id].email,
+        }
+      : null,
+  }));
+
+  return attachLikes(withProfiles, currentUserId);
+}
+
+async function attachLikes(comments, currentUserId) {
   if (comments.length === 0) return [];
 
   const ids = comments.map((c) => c.id);
@@ -23,7 +53,15 @@ export async function getComments(postId, currentUserId) {
     .select('comment_id, user_id')
     .in('comment_id', ids);
 
-  if (likesErr) throw likesErr;
+  // Likes table may not exist until the migration is applied — still show comments
+  if (likesErr) {
+    console.warn('Comment likes unavailable:', likesErr.message);
+    return comments.map((c) => ({
+      ...c,
+      like_count: 0,
+      liked_by_me: false,
+    }));
+  }
 
   const countByComment = {};
   const likedByMe = new Set();

@@ -195,29 +195,34 @@ export async function publishSocialContent(payload) {
     body: payload,
   });
 
-  if (error) {
+  // Prefer the function JSON body; supabase-js often only exposes a generic
+  // "non-2xx" message on error.
+  let body = data;
+  if (error && !body && error.context && typeof error.context.json === 'function') {
+    try {
+      body = await error.context.json();
+    } catch {
+      // ignore parse failures
+    }
+  }
+
+  if (error || (body && body.ok === false)) {
+    const code = body?.code || 'PUBLISH_FAILED';
     const msg =
-      data?.message ||
-      error.message ||
-      'Could not publish content. Please try again.';
-    throw Object.assign(
-      new Error(data?.code === 'CONTENT_REJECTED' ? GUIDELINES_MESSAGE : msg),
-      { code: data?.code || 'PUBLISH_FAILED' }
-    );
+      code === 'CONTENT_REJECTED'
+        ? GUIDELINES_MESSAGE
+        : body?.message ||
+          (error?.message && !/non-2xx/i.test(error.message)
+            ? error.message
+            : null) ||
+          'Could not publish content. Please try again.';
+    if (body?.detail && !msg.includes(body.detail)) {
+      throw Object.assign(new Error(`${msg}: ${body.detail}`), { code });
+    }
+    throw Object.assign(new Error(msg), { code });
   }
 
-  if (data && data.ok === false) {
-    throw Object.assign(
-      new Error(
-        data.code === 'CONTENT_REJECTED'
-          ? GUIDELINES_MESSAGE
-          : data.message || 'Could not publish content.'
-      ),
-      { code: data.code || 'PUBLISH_FAILED' }
-    );
-  }
-
-  return data;
+  return body;
 }
 
 export { GUIDELINES_MESSAGE };
