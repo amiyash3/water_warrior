@@ -2,6 +2,7 @@ import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Droplets, MapPin } from 'lucide-react';
 import UserAvatar from './UserAvatar';
+import UserProfileLink from './UserProfileLink';
 import DualPhotoView from './DualPhotoView';
 import CommentSection from './CommentSection';
 import ContentActionsMenu from './ContentActionsMenu';
@@ -32,13 +33,15 @@ export default function PostCard({ post, author, onAuthorBlocked, onPostDeleted 
   return (
     <article className="bg-card rounded-3xl overflow-hidden border border-border/50 shadow-sm hover:shadow-lg hover:shadow-primary/5 transition-all">
       <header className="flex items-center gap-3 p-4">
-        <UserAvatar user={userProfile} size="md" />
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm leading-tight truncate">
-            {userProfile.username || userProfile.full_name || userProfile.email}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">{timeAgo}</p>
-        </div>
+        <UserProfileLink userId={authorId} user={userProfile} className="flex-1 min-w-0">
+          <UserAvatar user={userProfile} size="md" />
+          <div className="flex-1 min-w-0 text-left">
+            <p className="font-semibold text-sm leading-tight truncate">
+              {userProfile.username || userProfile.full_name || userProfile.email}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">{timeAgo}</p>
+          </div>
+        </UserProfileLink>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
           <Droplets className="w-3.5 h-3.5" />
           {post.bottle_size_ml >= 1000

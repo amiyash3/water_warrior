@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import UserAvatar from '@/components/UserAvatar';
+import UserProfileLink from '@/components/UserProfileLink';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import { shareGroupInvite } from '@/lib/groupInvite';
@@ -554,19 +555,30 @@ function GroupDetail({ groupId, me, onBack, onLeft }) {
                     >
                       {index + 1}
                     </span>
-                    <UserAvatar
+                    <UserProfileLink
+                      userId={row.user_id}
                       user={{
                         username: row.username,
                         full_name: row.full_name,
                         avatar_url: row.avatar_url,
                       }}
-                      size="sm"
-                      className="ring-0 shadow-none"
-                    />
-                    <p className="flex-1 min-w-0 font-semibold text-sm truncate">
-                      {row.username || row.full_name || 'Warrior'}
-                      {isMe ? ' · You' : ''}
-                    </p>
+                      groupStats={{ water_ml: row.water_ml, streak_count: row.streak_count }}
+                      className="flex flex-1 min-w-0 items-center gap-3"
+                    >
+                      <UserAvatar
+                        user={{
+                          username: row.username,
+                          full_name: row.full_name,
+                          avatar_url: row.avatar_url,
+                        }}
+                        size="sm"
+                        className="ring-0 shadow-none"
+                      />
+                      <p className="flex-1 min-w-0 font-semibold text-sm truncate text-left">
+                        {row.username || row.full_name || 'Warrior'}
+                        {isMe ? ' · You' : ''}
+                      </p>
+                    </UserProfileLink>
                     <p className="font-bold text-sm tabular-nums shrink-0 text-sky-200">
                       {primary}
                     </p>
@@ -607,24 +619,35 @@ function GroupDetail({ groupId, me, onBack, onLeft }) {
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <UserAvatar
+                    <UserProfileLink
+                      userId={row.user_id}
                       user={{
                         username: row.username,
                         full_name: row.full_name,
                         avatar_url: row.avatar_url,
                       }}
-                      size="md"
-                      className="ring-2 ring-white/30 shadow-none"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold truncate">
-                        {row.username || row.full_name || 'Warrior'}
-                        {isMe ? ' · You' : ''}
-                      </p>
-                      <p className="text-[11px] uppercase tracking-wider text-white/70 mt-0.5">
-                        #{index + 1} · {boardSubtitle}
-                      </p>
-                    </div>
+                      groupStats={{ water_ml: row.water_ml, streak_count: row.streak_count }}
+                      className="flex flex-1 min-w-0 items-start gap-3"
+                    >
+                      <UserAvatar
+                        user={{
+                          username: row.username,
+                          full_name: row.full_name,
+                          avatar_url: row.avatar_url,
+                        }}
+                        size="md"
+                        className="ring-2 ring-white/30 shadow-none"
+                      />
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="font-bold truncate">
+                          {row.username || row.full_name || 'Warrior'}
+                          {isMe ? ' · You' : ''}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-wider text-white/70 mt-0.5">
+                          #{index + 1} · {boardSubtitle}
+                        </p>
+                      </div>
+                    </UserProfileLink>
                   </div>
 
                   <div className="mt-5 grid grid-cols-2 gap-3">

@@ -16,6 +16,7 @@ import Capture from '@/pages/Capture';
 import Discover from '@/pages/Discover.jsx';
 import Account from '@/pages/Account.jsx';
 import Groups from '@/pages/Groups.jsx';
+import UserProfile from '@/pages/UserProfile.jsx';
 import Auth from '@/pages/Auth';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useHydrationReminders } from '@/hooks/useHydrationReminders';
@@ -48,6 +49,7 @@ function AnimatedRoutes() {
             <Route path="/discover" element={<Discover />} />
             <Route path="/account" element={<Account />} />
             <Route path="/groups" element={<Groups />} />
+            <Route path="/user/:userId" element={<UserProfile />} />
             <Route path="/analytics" element={<Navigate to="/account" replace />} />
           </Route>
           <Route path="*" element={<PageNotFound />} />

@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import UserAvatar from '@/components/UserAvatar';
+import UserProfileLink from '@/components/UserProfileLink';
 import ContentActionsMenu from '@/components/ContentActionsMenu';
 import { isUserBlocked } from '@/services/moderation';
 import { toast } from 'sonner';
@@ -175,15 +176,17 @@ export default function AccountFriendsList({ me, onClose }) {
                 key={user.id}
                 className="flex items-center gap-3 p-3 bg-card rounded-2xl border border-border/50"
               >
-                <UserAvatar user={user} size="md" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">
-                    {user.username || user.full_name || user.email}
-                  </p>
-                  {user.bio && (
-                    <p className="text-xs text-muted-foreground truncate">{user.bio}</p>
-                  )}
-                </div>
+                <UserProfileLink userId={user.id} user={user} className="flex-1 min-w-0">
+                  <UserAvatar user={user} size="md" />
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-semibold text-sm truncate">
+                      {user.username || user.full_name || user.email}
+                    </p>
+                    {user.bio && (
+                      <p className="text-xs text-muted-foreground truncate">{user.bio}</p>
+                    )}
+                  </div>
+                </UserProfileLink>
                 <div className="flex items-center gap-1 text-xs text-primary font-semibold px-3 py-1.5 bg-primary/10 rounded-full">
                   <Check className="w-3.5 h-3.5" /> Friend
                 </div>

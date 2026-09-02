@@ -310,6 +310,16 @@ export const localApi = {
       async list() {
         return getUsers();
       },
+      async get(id) {
+        const users = getUsers();
+        const user = users.find((u) => u.id === id);
+        if (!user) {
+          const err = new Error('User not found');
+          err.status = 404;
+          throw err;
+        }
+        return user;
+      },
     },
     FriendRequest: createEntityApi(STORAGE.friendRequests),
   },

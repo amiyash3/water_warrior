@@ -23,7 +23,7 @@ export async function getComments(postId, currentUserId) {
   if (userIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, username, full_name, email')
+      .select('id, username, full_name, email, avatar_url')
       .in('id', userIds);
     (profiles ?? []).forEach((p) => {
       profilesById[p.id] = p;
@@ -37,6 +37,7 @@ export async function getComments(postId, currentUserId) {
           username: profilesById[c.user_id].username,
           full_name: profilesById[c.user_id].full_name,
           email: profilesById[c.user_id].email,
+          avatar_url: profilesById[c.user_id].avatar_url,
         }
       : null,
   }));

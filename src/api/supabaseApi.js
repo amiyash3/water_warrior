@@ -349,6 +349,22 @@ export function createSupabaseApi(supabase) {
         if (error) throw error;
         return (data ?? []).map((r) => mapProfileRow(r, []));
       },
+
+      async get(id) {
+        await requireSession();
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) {
+          const err = new Error('User not found');
+          err.status = 404;
+          throw err;
+        }
+        return mapProfileRow(data, []);
+      },
     },
 
     FriendRequest: {

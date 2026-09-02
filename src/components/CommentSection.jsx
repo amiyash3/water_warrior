@@ -7,7 +7,7 @@ import {
   deleteComment,
   toggleCommentLike,
 } from '@/services/comments';
-import UserAvatar from './UserAvatar';
+import UserProfileLink from './UserProfileLink';
 import ContentActionsMenu from './ContentActionsMenu';
 import { toast } from 'sonner';
 import { openExternalUrl } from '@/lib/openExternalUrl';
@@ -33,19 +33,31 @@ function CommentRow({
 }) {
   return (
     <div className={cn('flex items-start gap-2 group', isReply && 'ml-8')}>
-      <UserAvatar
+      <UserProfileLink
+        userId={comment.user_id}
         user={{
           email: comment.profiles?.email,
           username: comment.profiles?.username,
           full_name: comment.profiles?.full_name,
+          avatar_url: comment.profiles?.avatar_url,
         }}
         size="sm"
       />
       <div className="flex-1 min-w-0">
         <div className="bg-muted/50 rounded-2xl px-3 py-2">
-          <p className="text-xs font-semibold leading-tight truncate">
-            {displayName(comment)}
-          </p>
+          <UserProfileLink
+            userId={comment.user_id}
+            user={{
+              email: comment.profiles?.email,
+              username: comment.profiles?.username,
+              full_name: comment.profiles?.full_name,
+            }}
+            className="block"
+          >
+            <p className="text-xs font-semibold leading-tight truncate text-left">
+              {displayName(comment)}
+            </p>
+          </UserProfileLink>
           <p className="text-sm leading-snug break-words">{comment.content}</p>
         </div>
         <div className="flex items-center gap-3 mt-1 px-1">
